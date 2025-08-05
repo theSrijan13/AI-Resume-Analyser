@@ -53,7 +53,7 @@ const menuItems = [
   },
 ];
 
-export function AppSidebar() {
+export function RecruiterSidebar() {
   const pathname = usePathname();
 
   return (
@@ -65,6 +65,7 @@ export function AppSidebar() {
             <h2 className="text-lg font-semibold tracking-tight font-headline">
               TalentFlow AI
             </h2>
+            <span className="text-xs text-muted-foreground">Recruiter</span>
           </div>
         </Link>
       </SidebarHeader>

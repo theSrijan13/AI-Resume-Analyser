@@ -11,49 +11,32 @@ import {
 } from '@/components/ui/sidebar';
 import {
   LayoutDashboard,
-  Users,
-  FileText,
-  ScanSearch,
+  FileSearch,
+  Briefcase,
   Bot,
-  Sparkles,
   Github
 } from 'lucide-react';
 import { ThemeToggle } from '../ThemeToggle';
 
 const menuItems = [
   {
-    href: '/recruiter/dashboard',
+    href: '/candidate/dashboard',
     label: 'Dashboard',
     icon: LayoutDashboard,
   },
   {
-    href: '/candidates',
-    label: 'Candidates',
-    icon: Users,
+    href: '/candidate/jobs',
+    label: 'Find Jobs',
+    icon: FileSearch,
   },
   {
-    href: '/resume-parsing',
-    label: 'Resume Parsing',
-    icon: FileText,
-  },
-  {
-    href: '/shortlisting',
-    label: 'AI Shortlisting',
-    icon: ScanSearch,
-  },
-  {
-    href: '/voice-interviewer',
-    label: 'Voice AI',
-    icon: Bot,
-  },
-  {
-    href: '/skill-gap-analysis',
-    label: 'Skill Gap Analysis',
-    icon: Sparkles,
+    href: '/candidate/applications',
+    label: 'My Applications',
+    icon: Briefcase,
   },
 ];
 
-export function AppSidebar() {
+export function CandidateSidebar() {
   const pathname = usePathname();
 
   return (
@@ -65,6 +48,7 @@ export function AppSidebar() {
             <h2 className="text-lg font-semibold tracking-tight font-headline">
               TalentFlow AI
             </h2>
+            <span className="text-xs text-muted-foreground">Candidate</span>
           </div>
         </Link>
       </SidebarHeader>
