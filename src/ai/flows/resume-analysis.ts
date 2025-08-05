@@ -22,15 +22,36 @@ const AnalyzeResumeInputSchema = z.object({
 });
 export type AnalyzeResumeInput = z.infer<typeof AnalyzeResumeInputSchema>;
 
+const ExperienceSchema = z.object({
+    role: z.string().describe('The job title or role.'),
+    company: z.string().describe('The name of the company.'),
+    dates: z.string().describe('The start and end dates of the employment (e.g., "Jan 2020 - Present").'),
+    description: z.array(z.string()).describe('A list of bullet points describing responsibilities and achievements.')
+});
+
+const EducationSchema = z.object({
+    institution: z.string().describe('The name of the educational institution.'),
+    degree: z.string().describe('The degree or field of study.'),
+    dates: z.string().describe('The start and end dates of the education (e.g., "Aug 2016 - May 2020").'),
+    details: z.array(z.string()).optional().describe('Any additional details like GPA, honors, or relevant coursework.')
+});
+
+const ProjectSchema = z.object({
+    name: z.string().describe('The name of the project.'),
+    dates: z.string().optional().describe('The dates or timeframe of the project.'),
+    technologies: z.array(z.string()).describe('A list of technologies used in the project.'),
+    description: z.array(z.string()).describe('A list of bullet points describing the project and its outcomes.')
+});
+
 const ResumeSectionSchema = z.object({
   name: z.string().describe('The name of the candidate.'),
   email: z.string().describe('The email address of the candidate.'),
   phone: z.string().describe('The phone number of the candidate.'),
   summary: z.string().describe('The professional summary or objective.'),
-  experience: z.array(z.string()).describe('The work experience of the candidate, including company, role, and dates.'),
-  education: z.array(z.string()).describe('The education history of the candidate, including institution, degree, and dates.'),
+  experience: z.array(ExperienceSchema).describe('The work experience of the candidate, including company, role, and dates.'),
+  education: z.array(EducationSchema).describe('The education history of the candidate, including institution, degree, and dates.'),
   skills: z.array(z.string()).describe('The skills of the candidate.'),
-  projects: z.array(z.string()).describe('A list of projects mentioned in the resume.'),
+  projects: z.array(ProjectSchema).describe('A list of projects mentioned in the resume.'),
   certifications: z.array(z.string()).describe('A list of certifications mentioned in the resume.'),
   links: z.array(z.string()).describe('A list of URLs or links to portfolios, GitHub, LinkedIn, etc.'),
 });
@@ -46,6 +67,13 @@ const GeneralAnalysisSchema = z.object({
     }).describe('Detection of anomalies in the resume.'),
 });
 
+const VisualAnalysisSchema = z.object({
+    formattingConsistency: z.string().describe("Comments on the consistency of formatting (e.g., dates, bullet points, spacing)."),
+    layoutClarity: z.string().describe("Feedback on the overall layout, readability, and use of white space."),
+    fontChoice: z.string().describe("Comments on the font choice and size for readability and professionalism."),
+    visualIssues: z.array(z.string()).describe("A list of specific visual or formatting issues found (e.g., 'Inconsistent date format in Experience section')."),
+});
+
 const JobMatchAnalysisSchema = z.object({
     isApplicable: z.boolean().describe('Whether a job description or URL was provided for analysis.'),
     matchScore: z.number().min(0).max(100).describe('A score from 0 to 100 indicating how well the resume matches the job description.'),
@@ -59,6 +87,7 @@ const AnalyzeResumeOutputSchema = z.object({
   extractedData: ResumeSectionSchema,
   generalAnalysis: GeneralAnalysisSchema,
   jobMatchAnalysis: JobMatchAnalysisSchema,
+  visualAnalysis: VisualAnalysisSchema,
   overallScore: z.number().min(0).max(100).describe('An overall score for the resume from 0 to 100 based on its clarity, impact, and completeness.'),
 });
 export type AnalyzeResumeOutput = z.infer<typeof AnalyzeResumeOutputSchema>;
@@ -75,7 +104,7 @@ const prompt = ai.definePrompt({
   model: 'googleai/gemini-1.5-flash',
   prompt: `You are an expert career coach and senior resume analyst with 20 years of experience. Your task is to conduct a complete, comprehensive, and exhaustive analysis of the provided resume. Be critical, detailed, and provide actionable, professional advice.
 
-First, extract all key information from the resume. Be as thorough as possible. Extract full details for experience, education, and projects, including descriptions, dates, and accomplishments.
+First, extract all key information from the resume. Be as thorough as possible. For experience, education, and projects, extract full, detailed, multi-point descriptions. For links, extract the full URL.
 
 Second, perform a detailed general analysis covering the following:
 - **First Impressions**: Give your immediate, high-level feedback as if you were a recruiter seeing this for the first time. Comment on readability, layout, and initial impact.
@@ -84,8 +113,14 @@ Second, perform a detailed general analysis covering the following:
 - **Actionable Suggestions**: Provide specific, bullet-pointed advice on how to improve the resume. These should be concrete steps the user can take.
 - **Anomaly Detection**: Identify any potential red flags, such as unexplained gaps in employment, missing contact information, or typos.
 
+Third, perform a visual and formatting analysis.
+- **Formatting Consistency**: Is the formatting for dates, titles, and bullet points consistent throughout?
+- **Layout and Clarity**: Is the layout clean, easy to scan, and does it use white space effectively?
+- **Font Choice**: Is the font professional and readable?
+- **Visual Issues**: List any specific formatting errors you find.
+
 {{#if jobDescription}}
-Third, because a job description has been provided, perform a job match analysis.
+Fourth, because a job description has been provided, perform a job match analysis.
 - **Job Match Score**: Score the resume's match to the job description from 0-100.
 - **Keyword Analysis**: Identify matching and missing keywords between the resume and the job description.
 - **Alignment Summary**: Explain in detail how well the candidate's experience and skills align with the role's requirements and responsibilities. Point out specific projects or experiences that are highly relevant.
@@ -93,7 +128,7 @@ Job Description for analysis:
 {{{jobDescription}}}
 {{else}}
 {{#if jobUrl}}
-Third, because a job URL has been provided, perform a job match analysis. You will act as if you can access the content of this URL.
+Fourth, because a job URL has been provided, perform a job match analysis. You will act as if you can access the content of this URL.
 - **Job Match Score**: Score the resume's match to the job description from 0-100.
 - **Keyword Analysis**: Identify matching and missing keywords between the resume and the job description.
 - **Alignment Summary**: Explain in detail how well the candidate's experience and skills align with the role's requirements and responsibilities. Point out specific projects or experiences that are highly relevant.

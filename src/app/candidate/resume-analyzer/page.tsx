@@ -20,6 +20,8 @@ import {
   Book,
   Eye,
   ChevronDown,
+  CalendarDays,
+  Palette,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -43,21 +45,11 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, BarChart, Bar, XAxis } from 'recharts';
+import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, Timeline } from 'recharts';
 import { handleAnalyzeResume } from './actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
 
 const formSchema = z.object({
   resume: z
@@ -69,15 +61,18 @@ const formSchema = z.object({
 });
 
 const chartConfig = {
-    score: {
-      label: "Score",
-      color: "hsl(var(--primary))",
-    },
     count: {
         label: 'Count',
         color: 'hsl(var(--chart-1))',
     }
 };
+
+const parseDate = (dateStr: string): Date | null => {
+    if (!dateStr || dateStr.toLowerCase() === 'present') return new Date();
+    // Handles "Month YYYY", "YYYY", "Mon YYYY"
+    const date = new Date(dateStr);
+    return isNaN(date.getTime()) ? null : date;
+}
 
 export default function ResumeAnalyzerPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -117,9 +112,9 @@ export default function ResumeAnalyzerPage() {
     } catch (error) {
       console.error(error);
       toast({
-        title: 'Error',
+        title: 'Error Analyzing Resume',
         description:
-          error instanceof Error ? error.message : 'An unknown error occurred.',
+          error instanceof Error ? error.message : 'An unexpected error occurred. The AI service may be busy. Please try again in a moment.',
         variant: 'destructive',
       });
     } finally {
@@ -127,17 +122,29 @@ export default function ResumeAnalyzerPage() {
     }
   }
 
-  const skillsChartData = result?.extractedData.skills.slice(0, 7).map(skill => ({
-    subject: skill,
-    score: Math.floor(Math.random() * (95 - 70 + 1)) + 70, // Placeholder score
-  })) || [];
-
   const skillCategoryData = [
-    { category: 'Languages', count: result?.extractedData.skills.filter(s => ['javascript', 'python', 'java', 'c++'].includes(s.toLowerCase())).length || 0 },
-    { category: 'Frameworks', count: result?.extractedData.skills.filter(s => ['react', 'next.js', 'vue', 'angular', 'django'].includes(s.toLowerCase())).length || 0 },
-    { category: 'Databases', count: result?.extractedData.skills.filter(s => ['sql', 'mongodb', 'postgresql'].includes(s.toLowerCase())).length || 0 },
-    { category: 'Tools', count: result?.extractedData.skills.filter(s => ['git', 'docker', 'kubernetes'].includes(s.toLowerCase())).length || 0 }
+    { category: 'Languages', count: result?.extractedData.skills.filter(s => ['javascript', 'python', 'java', 'c++', 'typescript', 'go', 'ruby', 'php'].includes(s.toLowerCase())).length || 0 },
+    { category: 'Frameworks', count: result?.extractedData.skills.filter(s => ['react', 'next.js', 'vue', 'angular', 'django', 'flask', 'spring', 'express'].includes(s.toLowerCase())).length || 0 },
+    { category: 'Databases', count: result?.extractedData.skills.filter(s => ['sql', 'mysql', 'postgresql', 'mongodb', 'redis', 'firebase'].includes(s.toLowerCase())).length || 0 },
+    { category: 'Tools', count: result?.extractedData.skills.filter(s => ['git', 'docker', 'kubernetes', 'jenkins', 'aws', 'gcp', 'azure'].includes(s.toLowerCase())).length || 0 }
   ].filter(d => d.count > 0);
+  
+  const timelineData = result ? [
+    ...result.extractedData.experience.map(exp => {
+        const [start, end] = exp.dates.split(' - ');
+        return { name: exp.role, company: exp.company, start: parseDate(start), end: parseDate(end), type: 'Experience' };
+    }),
+    ...result.extractedData.education.map(edu => {
+        const [start, end] = edu.dates.split(' - ');
+        return { name: edu.degree, company: edu.institution, start: parseDate(start), end: parseDate(end), type: 'Education' };
+    }),
+     ...result.extractedData.projects.map(proj => {
+        const [start, end] = (proj.dates || " ").split(' - ');
+        return { name: proj.name, company: "Project", start: parseDate(start), end: parseDate(end || start), type: 'Project' };
+    }),
+  ]
+  .filter(item => item.start && item.end)
+  .sort((a,b) => a.start!.getTime() - b.start!.getTime()) : [];
 
 
   return (
@@ -327,23 +334,36 @@ export default function ResumeAnalyzerPage() {
                                     <TabsTrigger value="suggestions">Suggestions</TabsTrigger>
                                 </TabsList>
                                 <TabsContent value="strengths" className="mt-4">
-                                     <AnalysisSection icon={<CheckCircle className="text-green-500" />} title="What You're Doing Well" items={result.generalAnalysis.strengths} />
+                                     <AnalysisSection icon={<CheckCircle className="text-green-500" />} items={result.generalAnalysis.strengths} />
                                 </TabsContent>
                                 <TabsContent value="improvements" className="mt-4">
-                                    <AnalysisSection icon={<XCircle className="text-destructive" />} title="Areas for Improvement" items={result.generalAnalysis.areasForImprovement} />
+                                    <AnalysisSection icon={<XCircle className="text-destructive" />} items={result.generalAnalysis.areasForImprovement} />
                                 </TabsContent>
                                 <TabsContent value="suggestions" className="mt-4">
-                                    <AnalysisSection icon={<Lightbulb className="text-yellow-500" />} title="Actionable Suggestions" items={result.generalAnalysis.suggestions} />
+                                    <AnalysisSection icon={<Lightbulb className="text-yellow-500" />} items={result.generalAnalysis.suggestions} />
                                 </TabsContent>
                             </Tabs>
                         </CardContent>
                     </Card>
 
-                     <Accordion type="single" collapsible className="w-full">
+                    <Card className="underglow">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2"><Palette /> Visual & Formatting Analysis</CardTitle>
+                            <CardDescription>How your resume looks to a recruiter.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                             <VisualInfoItem label="Formatting Consistency" value={result.visualAnalysis.formattingConsistency} />
+                             <VisualInfoItem label="Layout Clarity" value={result.visualAnalysis.layoutClarity} />
+                             <VisualInfoItem label="Font Choice" value={result.visualAnalysis.fontChoice} />
+                             <AnalysisSection icon={<Eye className="text-primary" />} items={result.visualAnalysis.visualIssues} />
+                        </CardContent>
+                    </Card>
+
+                     <Accordion type="single" collapsible className="w-full" defaultValue="item-1">
                       <AccordionItem value="item-1">
                         <AccordionTrigger>
                            <h3 className="text-lg font-semibold flex items-center gap-2">
-                            <FileText /> Extracted Information
+                            <FileText /> Extracted Resume Details
                           </h3>
                         </AccordionTrigger>
                         <AccordionContent>
@@ -360,40 +380,26 @@ export default function ResumeAnalyzerPage() {
                                         <AlertDescription>{result.extractedData.summary || 'No summary found.'}</AlertDescription>
                                     </Alert>
                                     
-                                    <AnalysisSection title="Experience" items={result.extractedData.experience} icon={<Briefcase />} />
+                                    <SectionWrapper icon={<Briefcase />} title="Experience">
+                                        {result.extractedData.experience.map((exp, i) => (
+                                            <DetailCard key={i} title={exp.role} subtitle={exp.company} dates={exp.dates} items={exp.description} />
+                                        ))}
+                                    </SectionWrapper>
                                     <Separator />
-                                    <AnalysisSection title="Education" items={result.extractedData.education} icon={<GraduationCap />} />
+                                     <SectionWrapper icon={<GraduationCap />} title="Education">
+                                        {result.extractedData.education.map((edu, i) => (
+                                            <DetailCard key={i} title={edu.degree} subtitle={edu.institution} dates={edu.dates} items={edu.details || []} />
+                                        ))}
+                                    </SectionWrapper>
                                     <Separator />
-                                    <AnalysisSection title="Projects" items={result.extractedData.projects} icon={<Book />} />
+                                    <SectionWrapper icon={<Book />} title="Projects">
+                                        {result.extractedData.projects.map((proj, i) => (
+                                            <DetailCard key={i} title={proj.name} subtitle={proj.technologies.join(', ')} dates={proj.dates} items={proj.description} />
+                                        ))}
+                                    </SectionWrapper>
                                     <Separator />
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <InfoList label="Skills" items={result.extractedData.skills} icon={<Sparkles />} 
-                                         actionButton={
-                                            <AlertDialog>
-                                                <AlertDialogTrigger asChild>
-                                                    <Button variant="ghost" size="sm">Show all</Button>
-                                                </AlertDialogTrigger>
-                                                <AlertDialogContent>
-                                                    <AlertDialogHeader>
-                                                        <AlertDialogTitle>All Extracted Skills</AlertDialogTitle>
-                                                        <AlertDialogDescription>
-                                                           Here is the complete list of skills found on your resume.
-                                                        </AlertDialogDescription>
-                                                    </AlertDialogHeader>
-                                                    <div className="max-h-60 overflow-y-auto">
-                                                       <div className="flex flex-wrap gap-2">
-                                                            {result.extractedData.skills.map((item, index) => (
-                                                                <Badge key={index} variant="secondary">{item}</Badge>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                    <AlertDialogFooter>
-                                                        <AlertDialogAction>Close</AlertDialogAction>
-                                                    </AlertDialogFooter>
-                                                </AlertDialogContent>
-                                            </AlertDialog>
-                                         }
-                                        />
+                                        <InfoList label="Skills" items={result.extractedData.skills} icon={<Sparkles />} />
                                         <InfoList label="Certifications" items={result.extractedData.certifications} icon={<ListChecks />} />
                                     </div>
                                     <Separator />
@@ -406,34 +412,46 @@ export default function ResumeAnalyzerPage() {
 
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        {skillsChartData.length > 0 && (
-                            <Card className="underglow">
+                       {timelineData.length > 0 && (
+                            <Card className="underglow col-span-1 lg:col-span-2">
                                 <CardHeader>
-                                    <CardTitle>Skills Radar</CardTitle>
-                                    <CardDescription>A visual representation of your key skills (top 7 shown).</CardDescription>
+                                    <CardTitle className="flex items-center gap-2"><CalendarDays /> Career Timeline</CardTitle>
+                                    <CardDescription>A visual timeline of your experience, education, and projects.</CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    <ChartContainer config={chartConfig} className="h-[300px] w-full">
-                                        <RadarChart data={skillsChartData} cy="45%">
-                                            <PolarGrid />
-                                            <PolarAngleAxis dataKey="subject" />
-                                            <ChartTooltip content={<ChartTooltipContent />} />
-                                            <Radar name="Skill Score" dataKey="score" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.6} />
-                                        </RadarChart>
-                                    </ChartContainer>
+                                    <ResponsiveContainer width="100%" height={timelineData.length * 50 + 40}>
+                                        <Timeline data={timelineData}
+                                                  margin={{ top: 5, right: 30, left: 100, bottom: 5 }}>
+                                            <CartesianGrid strokeDasharray="3 3" />
+                                            <XAxis type="number" scale="time" domain={['dataMin', 'dataMax']} tickFormatter={(d) => new Date(d).getFullYear().toString()}/>
+                                            <YAxis dataKey="name" type="category" width={100} style={{ fontSize: '12px' }}/>
+                                            <Tooltip content={<CustomTooltip />} />
+                                            <Bar dataKey="range" barSize={20} radius={4}>
+                                                {timelineData.map((entry, index) => {
+                                                    const colors = {
+                                                        'Experience': 'hsl(var(--chart-1))',
+                                                        'Education': 'hsl(var(--chart-2))',
+                                                        'Project': 'hsl(var(--chart-3))',
+                                                    }
+                                                    return <div key={`cell-${index}`} fill={colors[entry.type as keyof typeof colors] || '#8884d8'} />;
+                                                })}
+                                            </Bar>
+                                        </Timeline>
+                                    </ResponsiveContainer>
                                 </CardContent>
                             </Card>
                         )}
                         {skillCategoryData.length > 0 && (
-                            <Card className="underglow">
+                            <Card className="underglow col-span-1 lg:col-span-2">
                                 <CardHeader>
                                     <CardTitle>Skill Categories</CardTitle>
                                     <CardDescription>Breakdown of your skills by category.</CardDescription>
                                 </CardHeader>
                                 <CardContent>
                                     <ChartContainer config={chartConfig} className="h-[300px] w-full">
-                                        <BarChart data={skillCategoryData} accessibilityLayer>
-                                            <XAxis dataKey="category" tickLine={false} axisLine={false} tickMargin={8} fontSize={12} />
+                                        <BarChart data={skillCategoryData} accessibilityLayer layout="vertical" margin={{ left: 20 }}>
+                                            <YAxis dataKey="category" type="category" tickLine={false} axisLine={false} tickMargin={8} fontSize={12} width={80} />
+                                            <XAxis type="number" hide />
                                             <ChartTooltip content={<ChartTooltipContent hideLabel />} />
                                             <Bar dataKey="count" fill="var(--color-count)" radius={8} />
                                         </BarChart>
@@ -457,20 +475,26 @@ const InfoItem = ({ label, value }: { label: string; value: string }) => (
   </div>
 );
 
-const InfoList = ({ label, items, icon, actionButton }: { label:string; items: string[]; icon?: React.ReactNode, actionButton?: React.ReactNode }) => (
+const VisualInfoItem = ({ label, value }: { label: string; value: string }) => (
+  <div>
+    <h4 className="font-semibold text-foreground">{label}</h4>
+    <p className="text-muted-foreground text-sm">{value}</p>
+  </div>
+);
+
+
+const InfoList = ({ label, items, icon }: { label:string; items: string[]; icon?: React.ReactNode }) => (
     <div>
         <div className="flex items-center justify-between mb-2">
             <h3 className="text-base font-semibold text-foreground flex items-center gap-2">{icon} {label}</h3>
-            {actionButton}
         </div>
         {items && items.length > 0 ? (
             <div className="flex flex-wrap gap-2 mt-1">
-                {items.slice(0, 10).map((item, index) => (
-                    <a href={item.startsWith('http') ? item : undefined} target="_blank" rel="noopener noreferrer" key={index}>
+                {items.map((item, index) => (
+                     <a href={item.startsWith('http') ? item : undefined} target="_blank" rel="noopener noreferrer" key={index} className="break-all">
                         <Badge variant="secondary" className={item.startsWith('http') ? 'hover:bg-primary/20 cursor-pointer' : ''}>{item}</Badge>
                     </a>
                 ))}
-                {items.length > 10 && <Badge variant="outline">+{items.length - 10} more</Badge>}
             </div>
         ) : (
             <p className="text-sm text-muted-foreground">Not found</p>
@@ -478,13 +502,15 @@ const InfoList = ({ label, items, icon, actionButton }: { label:string; items: s
     </div>
 );
 
-const AnalysisSection = ({ icon, title, items }: { icon: React.ReactNode, title: string, items: string[] }) => (
+const AnalysisSection = ({ icon, items }: { icon: React.ReactNode, items: string[] }) => (
     <div>
-      <h3 className="text-lg font-semibold flex items-center gap-2 mb-2">{icon} {title}</h3>
       <ul className="list-disc list-inside space-y-2 text-muted-foreground text-sm">
         {items && items.length > 0 ? (
             items.map((item, index) => (
-              <li key={index} className="pl-2">{item}</li>
+              <li key={index} className="pl-2 flex items-start gap-2">
+                <span className="mt-1">{icon}</span>
+                <span>{item}</span>
+              </li>
             ))
         ) : (
             <li className="pl-2">None found.</li>
@@ -492,3 +518,44 @@ const AnalysisSection = ({ icon, title, items }: { icon: React.ReactNode, title:
       </ul>
     </div>
   );
+
+const SectionWrapper = ({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) => (
+    <div>
+        <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">{icon} {title}</h3>
+        <div className="space-y-4">{children}</div>
+    </div>
+)
+
+const DetailCard = ({ title, subtitle, dates, items }: { title: string; subtitle: string; dates?: string; items: string[] }) => (
+    <Card className="bg-muted/30">
+        <CardHeader>
+            <div className="flex justify-between items-start">
+                <div>
+                    <CardTitle className="text-lg">{title}</CardTitle>
+                    <CardDescription>{subtitle}</CardDescription>
+                </div>
+                <Badge variant="outline" className="text-xs shrink-0">{dates}</Badge>
+            </div>
+        </CardHeader>
+        <CardContent>
+            <ul className="list-disc list-inside space-y-1 text-muted-foreground text-sm">
+                {items.map((item, index) => <li key={index}>{item}</li>)}
+            </ul>
+        </CardContent>
+    </Card>
+)
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="bg-background border p-2 rounded-md shadow-lg text-sm">
+        <p className="font-bold">{data.name}</p>
+        <p className="text-muted-foreground">{data.company}</p>
+        <p className="text-xs">{`${data.start?.toLocaleDateString()} - ${data.end?.toLocaleDateString()}`}</p>
+      </div>
+    );
+  }
+
+  return null;
+};
