@@ -14,7 +14,8 @@ import {
   FileSearch,
   Briefcase,
   Bot,
-  Github
+  Github,
+  Sparkles,
 } from 'lucide-react';
 import { ThemeToggle } from '../ThemeToggle';
 
@@ -23,6 +24,11 @@ const menuItems = [
     href: '/candidate/dashboard',
     label: 'Dashboard',
     icon: LayoutDashboard,
+  },
+  {
+    href: '/candidate/resume-analyzer',
+    label: 'Resume Analyzer',
+    icon: Sparkles,
   },
   {
     href: '/candidate/jobs',
