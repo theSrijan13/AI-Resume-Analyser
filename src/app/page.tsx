@@ -73,7 +73,7 @@ export default function LandingPage() {
   return (
     <div className="w-full bg-background relative">
       <SplashCursor />
-      <div className="container mx-auto relative z-10">
+      <div className="container mx-auto relative z-10 px-4">
         <header className="flex justify-between items-center py-4">
           <h1 className="text-2xl font-bold text-gradient bg-gradient-to-r from-primary to-accent">
             TalentFlow AI
@@ -161,3 +161,5 @@ export default function LandingPage() {
     </div>
   );
 }
+
+    
