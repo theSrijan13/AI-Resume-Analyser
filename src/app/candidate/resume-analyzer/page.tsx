@@ -11,10 +11,14 @@ import {
   CheckCircle,
   XCircle,
   Lightbulb,
+  Target,
+  FileUp,
+  RotateCcw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Form,
   FormControl,
@@ -35,11 +39,14 @@ import {
 } from '@/components/ui/chart';
 import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, PolarGrid, PolarAngleAxis, RadarChart, Radar } from 'recharts';
 import { handleAnalyzeResume } from './actions';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const formSchema = z.object({
   resume: z
     .instanceof(File, { message: 'Please upload a resume.' })
+    .refine((file) => file.size > 0, 'Please upload a resume.')
     .refine((file) => file.size < 5 * 1024 * 1024, 'File size must be less than 5MB.'),
+  jobDescription: z.string().optional(),
 });
 
 const chartConfig = {
@@ -56,7 +63,16 @@ export default function ResumeAnalyzerPage() {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
+    defaultValues: {
+        resume: undefined,
+        jobDescription: '',
+    }
   });
+
+  function handleReset() {
+    form.reset();
+    setResult(null);
+  }
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
@@ -64,6 +80,9 @@ export default function ResumeAnalyzerPage() {
 
     const formData = new FormData();
     formData.append('resume', values.resume);
+    if (values.jobDescription) {
+        formData.append('jobDescription', values.jobDescription);
+    }
 
     try {
       const analysisData = await handleAnalyzeResume(formData);
@@ -95,16 +114,16 @@ export default function ResumeAnalyzerPage() {
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-          <Sparkles /> Resume Analyzer
+          <Sparkles /> AI Resume Analyzer
         </h2>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-1">
           <Card className="underglow sticky top-4">
             <CardHeader>
-              <CardTitle>Upload Your Resume</CardTitle>
+              <CardTitle>Analyze Your Resume</CardTitle>
               <CardDescription>
-                Get instant AI-powered feedback.
+                Get instant, AI-powered feedback. For best results, add a job description.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -116,22 +135,21 @@ export default function ResumeAnalyzerPage() {
                   <FormField
                     control={form.control}
                     name="resume"
-                    render={({ field: { onChange, value, ...rest } }) => (
+                    render={({ field: { onChange, ...rest } }) => (
                       <FormItem>
                         <FormLabel>Resume File</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <Upload className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                            <FileUp className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                             <Input
                               type="file"
-                              className="pl-10"
-                              accept=".pdf,.doc,.docx"
+                              className="pl-10 file:text-sm file:font-medium file:text-accent-foreground file:bg-accent file:rounded-md file:px-3 file:py-1 file:border-0 file:mr-4 hover:file:bg-accent/90"
+                              accept=".pdf,.doc,.docx,.txt"
                               onChange={(e) => {
                                 if (e.target.files) {
                                   onChange(e.target.files[0]);
                                 }
                               }}
-                              {...rest}
                             />
                           </div>
                         </FormControl>
@@ -139,16 +157,40 @@ export default function ResumeAnalyzerPage() {
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" disabled={isLoading} className="w-full">
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Analyzing...
-                      </>
-                    ) : (
-                      'Analyze Resume'
+
+                  <FormField
+                    control={form.control}
+                    name="jobDescription"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Job Description (Optional)</FormLabel>
+                        <FormControl>
+                            <Textarea 
+                                placeholder="Paste the job description here to get a tailored analysis and match score."
+                                className="min-h-[150px]"
+                                {...field}
+                            />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )}
-                  </Button>
+                  />
+
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" onClick={handleReset} className="w-full" disabled={isLoading}>
+                      <RotateCcw className="mr-2" /> Clear
+                    </Button>
+                    <Button type="submit" disabled={isLoading} className="w-full">
+                        {isLoading ? (
+                        <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Analyzing...
+                        </>
+                        ) : (
+                        'Analyze Resume'
+                        )}
+                    </Button>
+                  </div>
                 </form>
               </Form>
             </CardContent>
@@ -158,14 +200,18 @@ export default function ResumeAnalyzerPage() {
         <div className="lg:col-span-2">
             {isLoading && (
               <div className="flex justify-center items-center h-96">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                <div className="text-center space-y-4">
+                    <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+                    <p className="text-muted-foreground">Our AI is analyzing your resume... this may take a moment.</p>
+                </div>
               </div>
             )}
             {!isLoading && !result && (
               <Card className="underglow h-96 flex justify-center items-center">
-                <div className="text-center text-muted-foreground">
+                <div className="text-center text-muted-foreground p-4">
                     <FileText size={48} className="mx-auto mb-4" />
-                    <p>Upload a resume to see the AI analysis.</p>
+                    <h3 className="text-lg font-semibold text-foreground">Awaiting Your Resume</h3>
+                    <p className="mt-1">Upload your resume and optionally a job description to see your personalized AI analysis.</p>
                 </div>
               </Card>
             )}
@@ -174,37 +220,66 @@ export default function ResumeAnalyzerPage() {
                     <Card className="underglow">
                         <CardHeader>
                              <CardTitle>Overall Score: {result.overallScore} / 100</CardTitle>
-                             <CardDescription>This score reflects the overall quality of your resume.</CardDescription>
+                             <CardDescription>This score reflects the general quality of your resume's content, structure, and clarity.</CardDescription>
                         </CardHeader>
                         <CardContent>
                              <Progress value={result.overallScore} className="w-full" />
                         </CardContent>
                     </Card>
+                    
+                    {result.jobMatchAnalysis.isApplicable && (
+                        <Card className="underglow">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2"><Target /> Job Match Analysis</CardTitle>
+                                <CardDescription>How well your resume aligns with the provided job description.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                <div>
+                                    <h3 className="text-base font-semibold mb-2">Match Score: {result.jobMatchAnalysis.matchScore} / 100</h3>
+                                    <Progress value={result.jobMatchAnalysis.matchScore} className="w-full" />
+                                </div>
+                                <div>
+                                    <h4 className="font-semibold">Alignment Summary</h4>
+                                    <p className="text-muted-foreground text-sm">{result.jobMatchAnalysis.alignmentSummary}</p>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <InfoList icon={<CheckCircle className="text-green-500" />} label="Matching Keywords" items={result.jobMatchAnalysis.matchingKeywords} />
+                                    <InfoList icon={<XCircle className="text-destructive" />} label="Missing Keywords" items={result.jobMatchAnalysis.missingKeywords} />
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
 
                     <Card className="underglow">
                         <CardHeader>
                             <CardTitle>Extracted Information</CardTitle>
+                            <CardDescription>The key details our AI extracted from your document.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <InfoItem label="Name" value={result.extractedData.name} />
                             <InfoItem label="Email" value={result.extractedData.email} />
                             <InfoItem label="Phone" value={result.extractedData.phone} />
-                            <InfoList label="Skills" items={result.extractedData.skills} />
-                            <InfoList label="Experience" items={result.extractedData.experience} />
-                            <InfoList label="Education" items={result.extractedData.education} />
+                             <InfoList label="Skills" items={result.extractedData.skills} />
+                             <Alert>
+                                <AlertTitle>Summary</AlertTitle>
+                                <AlertDescription>{result.extractedData.summary || 'No summary found.'}</AlertDescription>
+                             </Alert>
+                             <AnalysisSection title="Experience" items={result.extractedData.experience} icon={<FileText />} />
+                             <AnalysisSection title="Education" items={result.extractedData.education} icon={<FileText />} />
                         </CardContent>
                     </Card>
 
                     <Card className="underglow">
                         <CardHeader>
-                             <CardTitle>AI Analysis & Suggestions</CardTitle>
+                             <CardTitle>General AI Analysis</CardTitle>
+                             <CardDescription>General feedback on your resume, independent of a specific job.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            <AnalysisSection icon={<CheckCircle className="text-green-500" />} title="Strengths" items={result.analysis.strengths} />
+                            <AnalysisSection icon={<CheckCircle className="text-green-500" />} title="Strengths" items={result.generalAnalysis.strengths} />
                             <Separator />
-                            <AnalysisSection icon={<XCircle className="text-destructive" />} title="Areas for Improvement" items={result.analysis.areasForImprovement} />
+                            <AnalysisSection icon={<XCircle className="text-destructive" />} title="Areas for Improvement" items={result.generalAnalysis.areasForImprovement} />
                             <Separator />
-                            <AnalysisSection icon={<Lightbulb className="text-yellow-500" />} title="Actionable Suggestions" items={result.analysis.suggestions} />
+                            <AnalysisSection icon={<Lightbulb className="text-yellow-500" />} title="Actionable Suggestions" items={result.generalAnalysis.suggestions} />
                         </CardContent>
                     </Card>
 
@@ -241,9 +316,9 @@ const InfoItem = ({ label, value }: { label: string; value: string }) => (
   </div>
 );
 
-const InfoList = ({ label, items }: { label:string; items: string[] }) => (
+const InfoList = ({ label, items, icon }: { label:string; items: string[]; icon?: React.ReactNode }) => (
     <div>
-        <h3 className="text-sm font-semibold text-muted-foreground">{label}</h3>
+        <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2 mb-2">{icon} {label}</h3>
         {items && items.length > 0 ? (
             <div className="flex flex-wrap gap-2 mt-1">
                 {items.map((item, index) => (
@@ -251,7 +326,7 @@ const InfoList = ({ label, items }: { label:string; items: string[] }) => (
                 ))}
             </div>
         ) : (
-            <p className="text-base">Not found</p>
+            <p className="text-sm text-muted-foreground">Not found</p>
         )}
     </div>
 );
@@ -259,12 +334,10 @@ const InfoList = ({ label, items }: { label:string; items: string[] }) => (
 const AnalysisSection = ({ icon, title, items }: { icon: React.ReactNode, title: string, items: string[] }) => (
     <div>
       <h3 className="text-lg font-semibold flex items-center gap-2 mb-2">{icon} {title}</h3>
-      <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+      <ul className="list-disc list-inside space-y-1 text-muted-foreground text-sm">
         {items.map((item, index) => (
           <li key={index}>{item}</li>
         ))}
       </ul>
     </div>
   );
-
-    

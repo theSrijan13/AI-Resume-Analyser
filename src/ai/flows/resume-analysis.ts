@@ -17,6 +17,7 @@ const AnalyzeResumeInputSchema = z.object({
     .describe(
       "A resume file, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
     ),
+  jobDescription: z.string().optional().describe('The job description to compare the resume against.'),
 });
 export type AnalyzeResumeInput = z.infer<typeof AnalyzeResumeInputSchema>;
 
@@ -30,7 +31,7 @@ const ResumeSectionSchema = z.object({
   skills: z.array(z.string()).describe('The skills of the candidate.'),
 });
 
-const AnalysisSchema = z.object({
+const GeneralAnalysisSchema = z.object({
     strengths: z.array(z.string()).describe('Bulleted list of strengths of the resume.'),
     areasForImprovement: z.array(z.string()).describe('Bulleted list of areas for improvement.'),
     suggestions: z.array(z.string()).describe('Actionable suggestions to make the resume better.'),
@@ -40,11 +41,20 @@ const AnalysisSchema = z.object({
     }).describe('Detection of anomalies in the resume.'),
 });
 
+const JobMatchAnalysisSchema = z.object({
+    isApplicable: z.boolean().describe('Whether a job description was provided for analysis.'),
+    matchScore: z.number().min(0).max(100).describe('A score from 0 to 100 indicating how well the resume matches the job description.'),
+    matchingKeywords: z.array(z.string()).describe('Keywords from the job description found in the resume.'),
+    missingKeywords: z.array(z.string()).describe('Important keywords from the job description missing from the resume.'),
+    alignmentSummary: z.string().describe('A summary of how well the resume aligns with the job description.'),
+}).describe('Analysis of the resume against a specific job description.');
+
 
 const AnalyzeResumeOutputSchema = z.object({
   extractedData: ResumeSectionSchema,
-  analysis: AnalysisSchema,
-  overallScore: z.number().min(0).max(100).describe('An overall score for the resume from 0 to 100.'),
+  generalAnalysis: GeneralAnalysisSchema,
+  jobMatchAnalysis: JobMatchAnalysisSchema,
+  overallScore: z.number().min(0).max(100).describe('An overall score for the resume from 0 to 100 based on its clarity, impact, and completeness.'),
 });
 export type AnalyzeResumeOutput = z.infer<typeof AnalyzeResumeOutputSchema>;
 
@@ -57,20 +67,29 @@ const prompt = ai.definePrompt({
   name: 'analyzeResumePrompt',
   input: {schema: AnalyzeResumeInputSchema},
   output: {schema: AnalyzeResumeOutputSchema},
-  model: 'googleai/gemini-2.5-flash',
+  model: 'googleai/gemini-1.5-flash',
   prompt: `You are an expert career coach and resume analyst. Your task is to conduct a complete, comprehensive, and exhaustive analysis of the provided resume.
 
 First, extract all key information from the resume. Be as thorough as possible.
 
-Second, perform a detailed analysis covering the following:
+Second, perform a detailed general analysis covering the following:
 - **Strengths**: What makes this resume strong? (e.g., clear impact metrics, strong action verbs).
 - **Areas for Improvement**: What are the weaknesses? (e.g., vague descriptions, formatting issues).
 - **Actionable Suggestions**: Provide specific, bullet-pointed advice on how to improve the resume.
 - **Anomaly Detection**: Identify any potential red flags, such as unexplained gaps in employment or missing contact information.
 
-Finally, provide an overall score for the resume from 0 to 100 based on its clarity, impact, and completeness.
+{{#if jobDescription}}
+Third, because a job description has been provided, perform a job match analysis.
+- **Job Match Score**: Score the resume's match to the job description from 0-100.
+- **Keyword Analysis**: Identify matching and missing keywords between the resume and the job description.
+- **Alignment Summary**: Explain how well the candidate's experience and skills align with the role's requirements and responsibilities.
+Job Description for analysis:
+{{{jobDescription}}}
+{{/if}}
 
-Resume: {{media url=resumeDataUri}}`,
+Finally, provide an overall score for the resume from 0 to 100 based on its general clarity, impact, and completeness.
+
+Resume to analyze: {{media url=resumeDataUri}}`,
 });
 
 const analyzeResumeFlow = ai.defineFlow(
