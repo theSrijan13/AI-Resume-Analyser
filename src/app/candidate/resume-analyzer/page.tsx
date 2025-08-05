@@ -116,7 +116,7 @@ export default function ResumeAnalyzerPage() {
                   <FormField
                     control={form.control}
                     name="resume"
-                    render={({ field: { onChange, ...rest } }) => (
+                    render={({ field: { onChange, value, ...rest } }) => (
                       <FormItem>
                         <FormLabel>Resume File</FormLabel>
                         <FormControl>
@@ -266,3 +266,5 @@ const AnalysisSection = ({ icon, title, items }: { icon: React.ReactNode, title:
       </ul>
     </div>
   );
+
+    
