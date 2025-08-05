@@ -71,7 +71,6 @@ const prompt = ai.definePrompt({
   name: 'analyzeResumePrompt',
   input: {schema: AnalyzeResumeInputSchema},
   output: {schema: AnalyzeResumeOutputSchema},
-  model: 'googleai/gemini-1.5-flash',
   prompt: `You are an expert career coach and resume analyst. Your task is to conduct a complete, comprehensive, and exhaustive analysis of the provided resume.
 
 First, extract all key information from the resume. Be as thorough as possible. Extract full details for experience, education, and projects.
