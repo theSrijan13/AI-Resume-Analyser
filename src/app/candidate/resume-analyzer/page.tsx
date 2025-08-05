@@ -50,6 +50,7 @@ import { handleAnalyzeResume } from './actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { date } from 'zod';
 
 const formSchema = z.object({
   resume: z
@@ -72,21 +73,65 @@ const chartConfig = {
 };
 
 const parseDate = (dateStr: string): Date | null => {
-    if (!dateStr || dateStr.trim().toLowerCase() === 'present') return new Date();
-    
-    // Attempt to parse various formats
-    const cleanedDateStr = dateStr.trim().replace(/(\w{3})\s/, '$1 1, ');
-    
-    // Handles "Month YYYY", "Mon YYYY", "YYYY"
-    let date = new Date(cleanedDateStr);
-    if (!isNaN(date.getTime())) return date;
+    if (!dateStr || typeof dateStr !== 'string') return null;
 
-    // Handles "YYYY" alone if previous failed
-    if (/^\d{4}$/.test(cleanedDateStr)) {
-        date = new Date(`${cleanedDateStr}-01-01`);
-        if (!isNaN(date.getTime())) return date;
+    const cleanedDateStr = dateStr.trim().toLowerCase();
+    if (cleanedDateStr === 'present' || cleanedDateStr === 'current') return new Date();
+
+    // Prioritize formats with month and year
+    const monthYearMatch = cleanedDateStr.match(/^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+(\d{4})/);
+    if (monthYearMatch) {
+        return new Date(`${monthYearMatch[1]} 1, ${monthYearMatch[2]}`);
+    }
+
+    // Handles various numeric formats like YYYY, MM/YYYY, DD/MM/YYYY etc.
+    // Replace separators with a common one
+    const numericDateStr = cleanedDateStr.replace(/[\/.-]/g, ' ');
+    const parts = numericDateStr.split(' ').filter(p => p);
+    
+    let year: number | undefined, month: number | undefined, day: number = 1;
+
+    if (parts.length === 1 && /^\d{4}$/.test(parts[0])) { // YYYY
+        year = parseInt(parts[0], 10);
+        month = 0; // January
+    } else if (parts.length === 1 && /^\d{2}$/.test(parts[0])) { // YY
+        const currentYear = new Date().getFullYear();
+        const century = Math.floor(currentYear / 100) * 100;
+        year = century + parseInt(parts[0], 10);
+        if (year > currentYear) year -= 100;
+        month = 0;
+    } else if (parts.length === 2) { // MM YYYY or MM YY
+        month = parseInt(parts[0], 10) - 1;
+        year = parseInt(parts[1], 10);
+        if (parts[1].length === 2) {
+             const currentYear = new Date().getFullYear();
+            const century = Math.floor(currentYear / 100) * 100;
+            year = century + year;
+            if (year > currentYear) year -= 100;
+        }
+    } else if (parts.length === 3) { // DD MM YYYY or MM DD YYYY
+        // Simple assumption: if first part > 12, it's DD/MM
+        if (parseInt(parts[0]) > 12) { // DD MM YYYY
+            day = parseInt(parts[0], 10);
+            month = parseInt(parts[1], 10) - 1;
+            year = parseInt(parts[2], 10);
+        } else { // Assume MM DD YYYY
+            month = parseInt(parts[0], 10) - 1;
+            day = parseInt(parts[1], 10);
+            year = parseInt(parts[2], 10);
+        }
+    }
+
+    if (year && month !== undefined && !isNaN(new Date(year, month, day).getTime())) {
+        return new Date(year, month, day);
     }
     
+    // Fallback for just year if other parsing fails
+    const yearMatch = cleanedDateStr.match(/\d{4}/);
+    if(yearMatch) {
+        return new Date(parseInt(yearMatch[0]), 0, 1);
+    }
+
     return null;
 }
 
@@ -137,29 +182,22 @@ export default function ResumeAnalyzerPage() {
       setIsLoading(false);
     }
   }
-
-  const skillCategoryData = [
-    { category: 'Languages', count: result?.extractedData.skills.filter(s => ['javascript', 'python', 'java', 'c++', 'typescript', 'go', 'ruby', 'php'].includes(s.toLowerCase())).length || 0 },
-    { category: 'Frameworks', count: result?.extractedData.skills.filter(s => ['react', 'next.js', 'vue', 'angular', 'django', 'flask', 'spring', 'express'].includes(s.toLowerCase())).length || 0 },
-    { category: 'Databases', count: result?.extractedData.skills.filter(s => ['sql', 'mysql', 'postgresql', 'mongodb', 'redis', 'firebase'].includes(s.toLowerCase())).length || 0 },
-    { category: 'Tools', count: result?.extractedData.skills.filter(s => ['git', 'docker', 'kubernetes', 'jenkins', 'aws', 'gcp', 'azure'].includes(s.toLowerCase())).length || 0 }
-  ].filter(d => d.count > 0);
   
   const timelineData = result ? [
-    ...result.extractedData.experience.map(exp => {
-        const [start, end] = (exp.dates || " ").split(' - ');
-        return { name: exp.role, company: exp.company, start: parseDate(start), end: parseDate(end), type: 'Experience' };
+    ...(result.extractedData.experience || []).map(exp => {
+        const [start, end] = (exp.dates || " - ").split(' - ');
+        return { name: exp.role, company: exp.company, start: parseDate(start), end: parseDate(end || start), type: 'Experience' };
     }),
-    ...result.extractedData.education.map(edu => {
-        const [start, end] = (edu.dates || " ").split(' - ');
-        return { name: edu.degree, company: edu.institution, start: parseDate(start), end: parseDate(end), type: 'Education' };
+    ...(result.extractedData.education || []).map(edu => {
+        const [start, end] = (edu.dates || " - ").split(' - ');
+        return { name: edu.degree, company: edu.institution, start: parseDate(start), end: parseDate(end || start), type: 'Education' };
     }),
-     ...result.extractedData.projects.map(proj => {
-        const [start, end] = (proj.dates || " ").split(' - ');
+     ...(result.extractedData.projects || []).map(proj => {
+        const [start, end] = (proj.dates || " - ").split(' - ');
         return { name: proj.name, company: "Project", start: parseDate(start), end: parseDate(end || start), type: 'Project' };
     }),
   ]
-  .filter(item => item.start && item.end)
+  .filter(item => item.start && item.end && !isNaN(item.start.getTime()) && !isNaN(item.end.getTime()))
   .sort((a,b) => a.start!.getTime() - b.start!.getTime())
   .map(item => ({...item, range: [item.start!.getTime(), item.end!.getTime()]}))
   : [];
@@ -175,16 +213,22 @@ export default function ResumeAnalyzerPage() {
         
         const prioritizedSkills = allSkills
           .filter(skill => keywordSet.has(skill.toLowerCase()))
-          .slice(0, 7);
+          .map(skill => ({ subject: skill, strength: 100, fullMark: 100 }));
 
         const remainingSkills = allSkills
-          .filter(skill => !keywordSet.has(skill.toLowerCase()));
+          .filter(skill => !keywordSet.has(skill.toLowerCase()))
+          .map(skill => ({ subject: skill, strength: 80, fullMark: 100 }));
 
-        const combinedSkills = [...prioritizedSkills, ...remainingSkills].slice(0, 7);
-        
-        return combinedSkills.map((skill) => ({ subject: skill, strength: 100, fullMark: 100 }));
+        return [...prioritizedSkills, ...remainingSkills].slice(0, 7);
       })() 
     : [];
+
+  const skillCategoryData = result?.extractedData.skills ? [
+    { category: 'Languages', count: result.extractedData.skills.filter(s => ['javascript', 'python', 'java', 'c++', 'c#', 'typescript', 'go', 'ruby', 'php', 'swift', 'kotlin'].some(lang => s.toLowerCase().includes(lang))).length },
+    { category: 'Frameworks', count: result.extractedData.skills.filter(s => ['react', 'next.js', 'vue', 'angular', 'django', 'flask', 'spring', 'express', '.net', 'laravel'].some(fw => s.toLowerCase().includes(fw))).length },
+    { category: 'Databases', count: result.extractedData.skills.filter(s => ['sql', 'mysql', 'postgresql', 'mongodb', 'redis', 'firebase', 'oracle', 'sqlite'].some(db => s.toLowerCase().includes(db))).length },
+    { category: 'Cloud/DevOps', count: result.extractedData.skills.filter(s => ['aws', 'gcp', 'azure', 'docker', 'kubernetes', 'jenkins', 'terraform', 'ansible'].some(tool => s.toLowerCase().includes(tool))).length }
+  ].filter(d => d.count > 0) : [];
 
 
   return (
@@ -489,7 +533,7 @@ export default function ResumeAnalyzerPage() {
                             <CardHeader>
                               <CardTitle>Top Skills</CardTitle>
                               <CardDescription>
-                                A radar chart of your top skills.
+                                A radar chart of your top skills. Skills matching the job description are scored higher.
                               </CardDescription>
                             </CardHeader>
                             <CardContent>
@@ -577,22 +621,36 @@ const InfoList = ({ label, items, icon }: { label:string; items: string[]; icon?
     </div>
 );
 
-const AnalysisSection = ({ icon, items }: { icon: React.ReactNode, items: string[] }) => (
-    <div>
-      <ul className="list-disc list-inside space-y-2 text-muted-foreground text-sm">
-        {items && items.length > 0 ? (
-            items.map((item, index) => (
-              <li key={index} className="pl-2 flex items-start gap-2">
-                <span className="mt-1">{icon}</span>
-                <span>{item}</span>
-              </li>
-            ))
-        ) : (
-            <li className="pl-2">None found.</li>
-        )}
-      </ul>
-    </div>
-  );
+const AnalysisSection = ({ icon, items }: { icon: React.ReactNode, items: string[] }) => {
+    const formattedItems = items.map(item => {
+        // Remove leading/trailing asterisks and split by the bolding syntax
+        const parts = item.replace(/^\*\*|\*\*$/g, '').split('**');
+        return parts;
+    });
+
+    return (
+        <ul className="list-disc list-inside space-y-2 text-muted-foreground text-sm">
+            {items && items.length > 0 ? (
+                formattedItems.map((parts, index) => (
+                  <li key={index} className="pl-2 flex items-start gap-2">
+                    <span className="mt-1">{icon}</span>
+                    <span>
+                        {parts.map((part, i) => 
+                            i % 2 === 1 ? <strong key={i} className="text-foreground font-semibold">{part}</strong> : part
+                        )}
+                    </span>
+                  </li>
+                ))
+            ) : (
+                <li className="pl-2 flex items-start gap-2">
+                    <span className="mt-1">{icon}</span>
+                    <span>None found.</span>
+                </li>
+            )}
+        </ul>
+    )
+};
+
 
 const SectionWrapper = ({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) => (
     <div>
