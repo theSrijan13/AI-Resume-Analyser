@@ -45,7 +45,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
-import { Bar, BarChart, Cell, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts';
+import { Bar, BarChart, Cell, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
 import { handleAnalyzeResume } from './actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -64,7 +64,11 @@ const chartConfig = {
     count: {
         label: 'Count',
         color: 'hsl(var(--chart-1))',
-    }
+    },
+     strength: {
+      label: "Strength",
+      color: "hsl(var(--chart-1))",
+    },
 };
 
 const parseDate = (dateStr: string): Date | null => {
@@ -147,6 +151,10 @@ export default function ResumeAnalyzerPage() {
   .sort((a,b) => a.start!.getTime() - b.start!.getTime())
   .map(item => ({...item, range: [item.start!.getTime(), item.end!.getTime()]}))
   : [];
+
+  const topSkills = result?.extractedData.skills
+    .slice(0, 7)
+    .map((skill) => ({ subject: skill, strength: 100, fullMark: 100 })) || [];
 
 
   return (
@@ -446,8 +454,40 @@ export default function ResumeAnalyzerPage() {
                                 </CardContent>
                             </Card>
                         )}
+                         {topSkills.length > 0 && (
+                          <Card className="underglow">
+                            <CardHeader>
+                              <CardTitle>Top Skills</CardTitle>
+                              <CardDescription>
+                                A radar chart of your top skills.
+                              </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                              <ChartContainer
+                                config={chartConfig}
+                                className="mx-auto aspect-square h-full w-full"
+                              >
+                                <RadarChart data={topSkills}>
+                                  <ChartTooltip
+                                    content={<ChartTooltipContent hideLabel />}
+                                  />
+                                  <PolarGrid />
+                                  <PolarAngleAxis dataKey="subject" />
+                                  <PolarRadiusAxis angle={30} domain={[0, 100]} />
+                                  <Radar
+                                    name="strength"
+                                    dataKey="strength"
+                                    stroke="var(--color-strength)"
+                                    fill="var(--color-strength)"
+                                    fillOpacity={0.6}
+                                  />
+                                </RadarChart>
+                              </ChartContainer>
+                            </CardContent>
+                          </Card>
+                        )}
                         {skillCategoryData.length > 0 && (
-                            <Card className="underglow col-span-1 lg:col-span-2">
+                            <Card className="underglow">
                                 <CardHeader>
                                     <CardTitle>Skill Categories</CardTitle>
                                     <CardDescription>Breakdown of your skills by category.</CardDescription>
