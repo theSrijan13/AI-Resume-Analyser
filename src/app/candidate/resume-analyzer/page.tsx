@@ -72,10 +72,22 @@ const chartConfig = {
 };
 
 const parseDate = (dateStr: string): Date | null => {
-    if (!dateStr || dateStr.toLowerCase() === 'present') return new Date();
-    // Handles "Month YYYY", "YYYY", "Mon YYYY"
-    const date = new Date(dateStr.replace(/(\w{3})\s/, '$1 1, '));
-    return isNaN(date.getTime()) ? null : date;
+    if (!dateStr || dateStr.trim().toLowerCase() === 'present') return new Date();
+    
+    // Attempt to parse various formats
+    const cleanedDateStr = dateStr.trim().replace(/(\w{3})\s/, '$1 1, ');
+    
+    // Handles "Month YYYY", "Mon YYYY", "YYYY"
+    let date = new Date(cleanedDateStr);
+    if (!isNaN(date.getTime())) return date;
+
+    // Handles "YYYY" alone if previous failed
+    if (/^\d{4}$/.test(cleanedDateStr)) {
+        date = new Date(`${cleanedDateStr}-01-01`);
+        if (!isNaN(date.getTime())) return date;
+    }
+    
+    return null;
 }
 
 export default function ResumeAnalyzerPage() {
@@ -135,11 +147,11 @@ export default function ResumeAnalyzerPage() {
   
   const timelineData = result ? [
     ...result.extractedData.experience.map(exp => {
-        const [start, end] = exp.dates.split(' - ');
+        const [start, end] = (exp.dates || " ").split(' - ');
         return { name: exp.role, company: exp.company, start: parseDate(start), end: parseDate(end), type: 'Experience' };
     }),
     ...result.extractedData.education.map(edu => {
-        const [start, end] = edu.dates.split(' - ');
+        const [start, end] = (edu.dates || " ").split(' - ');
         return { name: edu.degree, company: edu.institution, start: parseDate(start), end: parseDate(end), type: 'Education' };
     }),
      ...result.extractedData.projects.map(proj => {
@@ -152,9 +164,27 @@ export default function ResumeAnalyzerPage() {
   .map(item => ({...item, range: [item.start!.getTime(), item.end!.getTime()]}))
   : [];
 
-  const topSkills = result?.extractedData.skills
-    .slice(0, 7)
-    .map((skill) => ({ subject: skill, strength: 100, fullMark: 100 })) || [];
+  const topSkills = result 
+    ? (() => {
+        const allSkills = result.extractedData.skills || [];
+        const matchingKeywords = result.jobMatchAnalysis.isApplicable 
+          ? (result.jobMatchAnalysis.matchingKeywords || []) 
+          : [];
+        
+        const keywordSet = new Set(matchingKeywords.map(k => k.toLowerCase()));
+        
+        const prioritizedSkills = allSkills
+          .filter(skill => keywordSet.has(skill.toLowerCase()))
+          .slice(0, 7);
+
+        const remainingSkills = allSkills
+          .filter(skill => !keywordSet.has(skill.toLowerCase()));
+
+        const combinedSkills = [...prioritizedSkills, ...remainingSkills].slice(0, 7);
+        
+        return combinedSkills.map((skill) => ({ subject: skill, strength: 100, fullMark: 100 }));
+      })() 
+    : [];
 
 
   return (

@@ -101,7 +101,7 @@ const prompt = ai.definePrompt({
   name: 'analyzeResumePrompt',
   input: {schema: AnalyzeResumeInputSchema},
   output: {schema: AnalyzeResumeOutputSchema},
-  prompt: `You are an expert career coach and senior resume analyst with 20 years of experience. Your task is to conduct a complete, comprehensive, and exhaustive analysis of the provided resume. Be critical, detailed, and provide actionable, professional advice.
+  prompt: `You are a world-class expert career coach and senior resume analyst with 20 years of experience. Your task is to conduct a complete, comprehensive, and exhaustive analysis of the provided resume. Be critical, detailed, and provide actionable, professional advice.
 
 First, extract all key information from the resume. Be as thorough as possible. For experience, education, and projects, extract full, detailed, multi-point descriptions. For links, extract the full URL.
 
