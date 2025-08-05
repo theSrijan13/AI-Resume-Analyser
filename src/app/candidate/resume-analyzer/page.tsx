@@ -45,7 +45,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
-import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, Timeline } from 'recharts';
+import { Bar, BarChart, Cell, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts';
 import { handleAnalyzeResume } from './actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -70,7 +70,7 @@ const chartConfig = {
 const parseDate = (dateStr: string): Date | null => {
     if (!dateStr || dateStr.toLowerCase() === 'present') return new Date();
     // Handles "Month YYYY", "YYYY", "Mon YYYY"
-    const date = new Date(dateStr);
+    const date = new Date(dateStr.replace(/(\w{3})\s/, '$1 1, '));
     return isNaN(date.getTime()) ? null : date;
 }
 
@@ -144,7 +144,9 @@ export default function ResumeAnalyzerPage() {
     }),
   ]
   .filter(item => item.start && item.end)
-  .sort((a,b) => a.start!.getTime() - b.start!.getTime()) : [];
+  .sort((a,b) => a.start!.getTime() - b.start!.getTime())
+  .map(item => ({...item, range: [item.start!.getTime(), item.end!.getTime()]}))
+  : [];
 
 
   return (
@@ -419,9 +421,12 @@ export default function ResumeAnalyzerPage() {
                                     <CardDescription>A visual timeline of your experience, education, and projects.</CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    <ResponsiveContainer width="100%" height={timelineData.length * 50 + 40}>
-                                        <Timeline data={timelineData}
-                                                  margin={{ top: 5, right: 30, left: 100, bottom: 5 }}>
+                                    <ResponsiveContainer width="100%" height={timelineData.length * 60 + 40}>
+                                        <BarChart
+                                          layout="vertical"
+                                          data={timelineData}
+                                          margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
+                                        >
                                             <CartesianGrid strokeDasharray="3 3" />
                                             <XAxis type="number" scale="time" domain={['dataMin', 'dataMax']} tickFormatter={(d) => new Date(d).getFullYear().toString()}/>
                                             <YAxis dataKey="name" type="category" width={100} style={{ fontSize: '12px' }}/>
@@ -433,10 +438,10 @@ export default function ResumeAnalyzerPage() {
                                                         'Education': 'hsl(var(--chart-2))',
                                                         'Project': 'hsl(var(--chart-3))',
                                                     }
-                                                    return <div key={`cell-${index}`} fill={colors[entry.type as keyof typeof colors] || '#8884d8'} />;
+                                                    return <Cell key={`cell-${index}`} fill={colors[entry.type as keyof typeof colors] || '#8884d8'} />;
                                                 })}
                                             </Bar>
-                                        </Timeline>
+                                        </BarChart>
                                     </ResponsiveContainer>
                                 </CardContent>
                             </Card>
@@ -548,11 +553,13 @@ const DetailCard = ({ title, subtitle, dates, items }: { title: string; subtitle
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
+    const startDate = data.range[0] ? new Date(data.range[0]).toLocaleDateString() : 'N/A';
+    const endDate = data.range[1] ? new Date(data.range[1]).toLocaleDateString() : 'N/A';
     return (
       <div className="bg-background border p-2 rounded-md shadow-lg text-sm">
         <p className="font-bold">{data.name}</p>
         <p className="text-muted-foreground">{data.company}</p>
-        <p className="text-xs">{`${data.start?.toLocaleDateString()} - ${data.end?.toLocaleDateString()}`}</p>
+        <p className="text-xs">{`${startDate} - ${endDate}`}</p>
       </div>
     );
   }
