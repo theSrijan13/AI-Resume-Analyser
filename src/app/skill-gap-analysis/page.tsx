@@ -16,18 +16,14 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { aiSkillGapAnalysis, AiSkillGapAnalysisOutput } from '@/ai/flows/ai-skill-gap-analysis';
+import { AiSkillGapAnalysisOutput } from '@/ai/flows/ai-skill-gap-analysis';
 import { Badge } from '@/components/ui/badge';
+import { handleSkillGapAnalysis } from './actions';
 
 const formSchema = z.object({
   resumeData: z.string().min(100, 'Resume data must be at least 100 characters.'),
   voiceAiTranscript: z.string().min(50, 'Voice AI transcript must be at least 50 characters.'),
 });
-
-async function handleSkillGapAnalysis(data: z.infer<typeof formSchema>) {
-  'use server';
-  return await aiSkillGapAnalysis(data);
-}
 
 export default function SkillGapAnalysisPage() {
   const [isLoading, setIsLoading] = useState(false);

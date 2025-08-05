@@ -17,19 +17,15 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { voiceAiInterviewer, VoiceAiInterviewerOutput } from '@/ai/flows/voice-ai-interviewer';
+import { VoiceAiInterviewerOutput } from '@/ai/flows/voice-ai-interviewer';
 import { Progress } from '@/components/ui/progress';
+import { handleVoiceInterview } from './actions';
 
 const formSchema = z.object({
   candidateName: z.string().min(2, 'Candidate name is required.'),
   jobDescription: z.string().min(50, 'Job description must be at least 50 characters.'),
   resumeText: z.string().min(100, 'Resume text must be at least 100 characters.'),
 });
-
-async function handleVoiceInterview(data: z.infer<typeof formSchema>) {
-  'use server';
-  return await voiceAiInterviewer(data);
-}
 
 export default function VoiceInterviewerPage() {
   const [isLoading, setIsLoading] = useState(false);

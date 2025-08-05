@@ -16,18 +16,14 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { aiShortlisting, AiShortlistingOutput } from '@/ai/flows/ai-shortlisting';
+import { AiShortlistingOutput } from '@/ai/flows/ai-shortlisting';
 import { Progress } from '@/components/ui/progress';
+import { handleShortlisting } from './actions';
 
 const formSchema = z.object({
   resumeData: z.string().min(100, 'Resume data must be at least 100 characters.'),
   jobRequirements: z.string().min(50, 'Job requirements must be at least 50 characters.'),
 });
-
-async function handleShortlisting(data: z.infer<typeof formSchema>) {
-  'use server';
-  return await aiShortlisting(data);
-}
 
 export default function ShortlistingPage() {
   const [isLoading, setIsLoading] = useState(false);

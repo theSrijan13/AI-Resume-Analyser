@@ -16,25 +16,13 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { parseResume, ParseResumeOutput } from '@/ai/flows/resume-parsing';
+import { ParseResumeOutput } from '@/ai/flows/resume-parsing';
 import { Badge } from '@/components/ui/badge';
+import { handleParseResume } from './actions';
 
 const formSchema = z.object({
   resume: z.instanceof(File, { message: 'Please upload a resume.' }),
 });
-
-async function handleParseResume(formData: FormData) {
-  'use server';
-  const file = formData.get('resume') as File;
-  if (!file) {
-    throw new Error('No resume file provided');
-  }
-  const buffer = await file.arrayBuffer();
-  const base64 = Buffer.from(buffer).toString('base64');
-  const dataUri = `data:${file.type};base64,${base64}`;
-
-  return await parseResume({ resumeDataUri: dataUri });
-}
 
 export default function ResumeParsingPage() {
   const [isLoading, setIsLoading] = useState(false);
