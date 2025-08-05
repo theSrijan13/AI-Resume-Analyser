@@ -76,7 +76,7 @@ export default function LandingPage() {
       <SplashCursor />
       <div className="container mx-auto relative z-10 px-4">
         <header className="flex justify-between items-center py-4">
-          <h1 className="text-2xl font-bold text-gradient bg-gradient-to-r from-blue-600 to-gray-900 dark:from-blue-400 dark:to-white">
+          <h1 className="text-2xl font-bold text-gradient bg-gradient-to-r from-blue-500 to-pink-500 dark:from-blue-400 dark:to-pink-400">
             TalentFlow AI
           </h1>
           <ThemeToggle />
@@ -163,3 +163,5 @@ export default function LandingPage() {
     </div>
   );
 }
+
+    
