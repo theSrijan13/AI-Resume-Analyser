@@ -1,10 +1,19 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import { MoveRight } from 'lucide-react';
+import {
+  MoveRight,
+  FileText,
+  ScanSearch,
+  Bot,
+  Sparkles,
+  Users,
+  Award,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { SplashCursor } from '@/components/ui/splash-cursor';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function LandingPage() {
   const [titleNumber, setTitleNumber] = useState(0);
@@ -19,6 +28,47 @@ export default function LandingPage() {
     }, 2000);
     return () => clearTimeout(timeoutId);
   }, [titleNumber, titles]);
+
+  const features = [
+    {
+      icon: <FileText className="w-8 h-8 text-primary" />,
+      title: 'Resume Parsing',
+      description: 'Automatically extract key information from any resume.',
+      link: '/resume-parsing',
+    },
+    {
+      icon: <ScanSearch className="w-8 h-8 text-primary" />,
+      title: 'AI Shortlisting',
+      description: 'Find the best candidates for the job with AI-powered screening.',
+      link: '/shortlisting',
+    },
+    {
+      icon: <Bot className="w-8 h-8 text-primary" />,
+      title: 'Voice AI Interviewer',
+      description:
+        'Conduct preliminary interviews with our conversational AI.',
+      link: '/voice-interviewer',
+    },
+    {
+      icon: <Sparkles className="w-8 h-8 text-primary" />,
+      title: 'Skill Gap Analysis',
+      description:
+        'Identify skill gaps and get personalized training recommendations.',
+      link: '/skill-gap-analysis',
+    },
+    {
+      icon: <Users className="w-8 h-8 text-primary" />,
+      title: 'Candidate Profiles',
+      description: 'Get a unified view of every candidate in your pipeline.',
+      link: '/candidates',
+    },
+    {
+      icon: <Award className="w-8 h-8 text-primary" />,
+      title: 'Recruiter Dashboard',
+      description: 'Track your entire recruitment pipeline from one place.',
+      link: '/recruiter/dashboard',
+    },
+  ];
 
   return (
     <div className="w-full bg-background relative">
@@ -72,6 +122,41 @@ export default function LandingPage() {
             </Button>
           </div>
         </div>
+
+        <section className="py-20">
+          <div className="text-center">
+            <h2 className="text-3xl font-bold tracking-tight">
+              A Complete Toolkit for Modern Talent Management
+            </h2>
+            <p className="text-lg text-muted-foreground mt-2 max-w-2xl mx-auto">
+              From the first application to the final hire and beyond,
+              TalentFlow AI provides all the tools you need.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-12">
+            {features.map((feature, index) => (
+              <Card
+                key={index}
+                className="underglow bg-card/50 backdrop-blur-sm"
+              >
+                <CardHeader className="flex flex-row items-center gap-4">
+                  {feature.icon}
+                  <CardTitle>{feature.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">
+                    {feature.description}
+                  </p>
+                  <Button variant="link" asChild className="p-0 mt-4">
+                    <Link href={feature.link}>
+                      Learn More <MoveRight className="ml-2 w-4 h-4" />
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
       </div>
     </div>
   );

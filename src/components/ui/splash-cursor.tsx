@@ -77,7 +77,7 @@ function SplashCursor({
     let pointers = [new pointerPrototype()];
     let splatStack = [];
     const { gl, ext } = getWebGLContext(canvas);
-    if (!ext.supportLinearFiltering) {
+    if (ext && !ext.supportLinearFiltering) {
       config.SHADING = false;
       config.BLOOM = false;
       config.SUNRAYS = false;
