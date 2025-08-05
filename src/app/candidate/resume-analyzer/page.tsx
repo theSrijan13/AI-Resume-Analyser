@@ -18,6 +18,8 @@ import {
   GraduationCap,
   ListChecks,
   Book,
+  Eye,
+  ChevronDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -41,9 +43,21 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, BarChart, Bar, XAxis, YAxis } from 'recharts';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, BarChart, Bar, XAxis } from 'recharts';
 import { handleAnalyzeResume } from './actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 const formSchema = z.object({
   resume: z
@@ -100,10 +114,6 @@ export default function ResumeAnalyzerPage() {
     try {
       const analysisData = await handleAnalyzeResume(formData);
       setResult(analysisData);
-      toast({
-        title: 'Success',
-        description: 'Resume analysis complete.',
-      });
     } catch (error) {
       console.error(error);
       toast({
@@ -155,13 +165,13 @@ export default function ResumeAnalyzerPage() {
                   <FormField
                     control={form.control}
                     name="resume"
-                    render={({ field: { onChange, ...rest } }) => (
+                    render={({ field: { onChange } }) => (
                       <FormItem>
                         <FormLabel>Resume File</FormLabel>
                         <FormControl>
-                            <label className="relative flex items-center justify-center h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background cursor-pointer hover:bg-accent hover:text-accent-foreground">
-                                <FileUp className="h-5 w-5 text-muted-foreground mr-2" />
-                                <span className="text-muted-foreground">{form.getValues('resume')?.name || 'Choose a file'}</span>
+                            <label className="relative flex items-center justify-center h-10 w-full rounded-md border border-dashed border-accent bg-accent/20 px-3 py-2 text-sm ring-offset-background cursor-pointer hover:bg-accent/30 hover:text-accent-foreground">
+                                <FileUp className="h-5 w-5 text-accent-foreground mr-2" />
+                                <span className="text-accent-foreground font-medium">{form.getValues('resume')?.name || 'Choose a file'}</span>
                                 <Input
                                     type="file"
                                     className="sr-only"
@@ -269,7 +279,7 @@ export default function ResumeAnalyzerPage() {
                     <Card className="underglow">
                         <CardHeader>
                              <CardTitle>Overall Score: {result.overallScore} / 100</CardTitle>
-                             <CardDescription>This score reflects the general quality of your resume's content, structure, and clarity.</CardDescription>
+                             <CardDescription>This score reflects your resume's clarity, impact, and completeness.</CardDescription>
                         </CardHeader>
                         <CardContent>
                              <Progress value={result.overallScore} className="w-full" />
@@ -301,49 +311,99 @@ export default function ResumeAnalyzerPage() {
 
                      <Card className="underglow">
                         <CardHeader>
-                             <CardTitle>General AI Analysis</CardTitle>
-                             <CardDescription>General feedback on your resume, independent of a specific job.</CardDescription>
+                             <CardTitle>Comprehensive AI Analysis</CardTitle>
+                             <CardDescription>In-depth feedback from our AI career coach.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            <AnalysisSection icon={<CheckCircle className="text-green-500" />} title="Strengths" items={result.generalAnalysis.strengths} />
-                            <Separator />
-                            <AnalysisSection icon={<XCircle className="text-destructive" />} title="Areas for Improvement" items={result.generalAnalysis.areasForImprovement} />
-                            <Separator />
-                            <AnalysisSection icon={<Lightbulb className="text-yellow-500" />} title="Actionable Suggestions" items={result.generalAnalysis.suggestions} />
+                            <Alert>
+                                <Lightbulb className="h-4 w-4" />
+                                <AlertTitle>First Impressions</AlertTitle>
+                                <AlertDescription>{result.generalAnalysis.firstImpressions}</AlertDescription>
+                            </Alert>
+                            <Tabs defaultValue="strengths" className="w-full">
+                               <TabsList className="grid w-full grid-cols-3">
+                                    <TabsTrigger value="strengths">Strengths</TabsTrigger>
+                                    <TabsTrigger value="improvements">Improvements</TabsTrigger>
+                                    <TabsTrigger value="suggestions">Suggestions</TabsTrigger>
+                                </TabsList>
+                                <TabsContent value="strengths" className="mt-4">
+                                     <AnalysisSection icon={<CheckCircle className="text-green-500" />} title="What You're Doing Well" items={result.generalAnalysis.strengths} />
+                                </TabsContent>
+                                <TabsContent value="improvements" className="mt-4">
+                                    <AnalysisSection icon={<XCircle className="text-destructive" />} title="Areas for Improvement" items={result.generalAnalysis.areasForImprovement} />
+                                </TabsContent>
+                                <TabsContent value="suggestions" className="mt-4">
+                                    <AnalysisSection icon={<Lightbulb className="text-yellow-500" />} title="Actionable Suggestions" items={result.generalAnalysis.suggestions} />
+                                </TabsContent>
+                            </Tabs>
                         </CardContent>
                     </Card>
 
-                    <Card className="underglow">
-                        <CardHeader>
-                            <CardTitle>Extracted Information</CardTitle>
-                            <CardDescription>The key details our AI extracted from your document.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <InfoItem label="Name" value={result.extractedData.name} />
-                                <InfoItem label="Email" value={result.extractedData.email} />
-                                <InfoItem label="Phone" value={result.extractedData.phone} />
-                            </div>
-                            <Separator/>
-                            <Alert>
-                                <AlertTitle>Summary</AlertTitle>
-                                <AlertDescription>{result.extractedData.summary || 'No summary found.'}</AlertDescription>
-                            </Alert>
-                             
-                            <AnalysisSection title="Experience" items={result.extractedData.experience} icon={<Briefcase />} />
-                            <Separator />
-                            <AnalysisSection title="Education" items={result.extractedData.education} icon={<GraduationCap />} />
-                             <Separator />
-                            <AnalysisSection title="Projects" items={result.extractedData.projects} icon={<Book />} />
-                            <Separator />
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <InfoList label="Skills" items={result.extractedData.skills} icon={<Sparkles />} />
-                                <InfoList label="Certifications" items={result.extractedData.certifications} icon={<ListChecks />} />
-                            </div>
-                            <Separator />
-                            <InfoList label="Links" items={result.extractedData.links} icon={<Link />} />
-                        </CardContent>
-                    </Card>
+                     <Accordion type="single" collapsible className="w-full">
+                      <AccordionItem value="item-1">
+                        <AccordionTrigger>
+                           <h3 className="text-lg font-semibold flex items-center gap-2">
+                            <FileText /> Extracted Information
+                          </h3>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                           <Card className="border-0 shadow-none">
+                                <CardContent className="space-y-6 pt-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <InfoItem label="Name" value={result.extractedData.name} />
+                                        <InfoItem label="Email" value={result.extractedData.email} />
+                                        <InfoItem label="Phone" value={result.extractedData.phone} />
+                                    </div>
+                                    <Separator/>
+                                    <Alert>
+                                        <AlertTitle>Summary</AlertTitle>
+                                        <AlertDescription>{result.extractedData.summary || 'No summary found.'}</AlertDescription>
+                                    </Alert>
+                                    
+                                    <AnalysisSection title="Experience" items={result.extractedData.experience} icon={<Briefcase />} />
+                                    <Separator />
+                                    <AnalysisSection title="Education" items={result.extractedData.education} icon={<GraduationCap />} />
+                                    <Separator />
+                                    <AnalysisSection title="Projects" items={result.extractedData.projects} icon={<Book />} />
+                                    <Separator />
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <InfoList label="Skills" items={result.extractedData.skills} icon={<Sparkles />} 
+                                         actionButton={
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button variant="ghost" size="sm">Show all</Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>All Extracted Skills</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                           Here is the complete list of skills found on your resume.
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <div className="max-h-60 overflow-y-auto">
+                                                       <div className="flex flex-wrap gap-2">
+                                                            {result.extractedData.skills.map((item, index) => (
+                                                                <Badge key={index} variant="secondary">{item}</Badge>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogAction>Close</AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                         }
+                                        />
+                                        <InfoList label="Certifications" items={result.extractedData.certifications} icon={<ListChecks />} />
+                                    </div>
+                                    <Separator />
+                                    <InfoList label="Links" items={result.extractedData.links} icon={<Link />} />
+                                </CardContent>
+                            </Card>
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         {skillsChartData.length > 0 && (
@@ -397,16 +457,20 @@ const InfoItem = ({ label, value }: { label: string; value: string }) => (
   </div>
 );
 
-const InfoList = ({ label, items, icon }: { label:string; items: string[]; icon?: React.ReactNode }) => (
+const InfoList = ({ label, items, icon, actionButton }: { label:string; items: string[]; icon?: React.ReactNode, actionButton?: React.ReactNode }) => (
     <div>
-        <h3 className="text-base font-semibold text-foreground flex items-center gap-2 mb-2">{icon} {label}</h3>
+        <div className="flex items-center justify-between mb-2">
+            <h3 className="text-base font-semibold text-foreground flex items-center gap-2">{icon} {label}</h3>
+            {actionButton}
+        </div>
         {items && items.length > 0 ? (
             <div className="flex flex-wrap gap-2 mt-1">
-                {items.map((item, index) => (
+                {items.slice(0, 10).map((item, index) => (
                     <a href={item.startsWith('http') ? item : undefined} target="_blank" rel="noopener noreferrer" key={index}>
                         <Badge variant="secondary" className={item.startsWith('http') ? 'hover:bg-primary/20 cursor-pointer' : ''}>{item}</Badge>
                     </a>
                 ))}
+                {items.length > 10 && <Badge variant="outline">+{items.length - 10} more</Badge>}
             </div>
         ) : (
             <p className="text-sm text-muted-foreground">Not found</p>
@@ -420,10 +484,10 @@ const AnalysisSection = ({ icon, title, items }: { icon: React.ReactNode, title:
       <ul className="list-disc list-inside space-y-2 text-muted-foreground text-sm">
         {items && items.length > 0 ? (
             items.map((item, index) => (
-              <li key={index}>{item}</li>
+              <li key={index} className="pl-2">{item}</li>
             ))
         ) : (
-            <li>None found.</li>
+            <li className="pl-2">None found.</li>
         )}
       </ul>
     </div>

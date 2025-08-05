@@ -36,6 +36,7 @@ const ResumeSectionSchema = z.object({
 });
 
 const GeneralAnalysisSchema = z.object({
+    firstImpressions: z.string().describe("The AI's immediate, high-level feedback on the resume upon first glance."),
     strengths: z.array(z.string()).describe('Bulleted list of strengths of the resume.'),
     areasForImprovement: z.array(z.string()).describe('Bulleted list of areas for improvement.'),
     suggestions: z.array(z.string()).describe('Actionable suggestions to make the resume better.'),
@@ -71,21 +72,23 @@ const prompt = ai.definePrompt({
   name: 'analyzeResumePrompt',
   input: {schema: AnalyzeResumeInputSchema},
   output: {schema: AnalyzeResumeOutputSchema},
-  prompt: `You are an expert career coach and resume analyst. Your task is to conduct a complete, comprehensive, and exhaustive analysis of the provided resume.
+  model: 'googleai/gemini-1.5-flash',
+  prompt: `You are an expert career coach and senior resume analyst with 20 years of experience. Your task is to conduct a complete, comprehensive, and exhaustive analysis of the provided resume. Be critical, detailed, and provide actionable, professional advice.
 
-First, extract all key information from the resume. Be as thorough as possible. Extract full details for experience, education, and projects.
+First, extract all key information from the resume. Be as thorough as possible. Extract full details for experience, education, and projects, including descriptions, dates, and accomplishments.
 
 Second, perform a detailed general analysis covering the following:
-- **Strengths**: What makes this resume strong? (e.g., clear impact metrics, strong action verbs).
-- **Areas for Improvement**: What are the weaknesses? (e.g., vague descriptions, formatting issues).
-- **Actionable Suggestions**: Provide specific, bullet-pointed advice on how to improve the resume.
-- **Anomaly Detection**: Identify any potential red flags, such as unexplained gaps in employment or missing contact information.
+- **First Impressions**: Give your immediate, high-level feedback as if you were a recruiter seeing this for the first time. Comment on readability, layout, and initial impact.
+- **Strengths**: What makes this resume strong? Be specific (e.g., "Quantifiable achievements in the 'Software Engineer at Acme' role show clear impact.").
+- **Areas for Improvement**: What are the weaknesses? Be critical (e.g., "The summary is generic," "Bullet points under the 'Intern' role are task-based, not achievement-oriented," "Inconsistent date formatting.").
+- **Actionable Suggestions**: Provide specific, bullet-pointed advice on how to improve the resume. These should be concrete steps the user can take.
+- **Anomaly Detection**: Identify any potential red flags, such as unexplained gaps in employment, missing contact information, or typos.
 
 {{#if jobDescription}}
 Third, because a job description has been provided, perform a job match analysis.
 - **Job Match Score**: Score the resume's match to the job description from 0-100.
 - **Keyword Analysis**: Identify matching and missing keywords between the resume and the job description.
-- **Alignment Summary**: Explain how well the candidate's experience and skills align with the role's requirements and responsibilities.
+- **Alignment Summary**: Explain in detail how well the candidate's experience and skills align with the role's requirements and responsibilities. Point out specific projects or experiences that are highly relevant.
 Job Description for analysis:
 {{{jobDescription}}}
 {{else}}
@@ -93,7 +96,7 @@ Job Description for analysis:
 Third, because a job URL has been provided, perform a job match analysis. You will act as if you can access the content of this URL.
 - **Job Match Score**: Score the resume's match to the job description from 0-100.
 - **Keyword Analysis**: Identify matching and missing keywords between the resume and the job description.
-- **Alignment Summary**: Explain how well the candidate's experience and skills align with the role's requirements and responsibilities.
+- **Alignment Summary**: Explain in detail how well the candidate's experience and skills align with the role's requirements and responsibilities. Point out specific projects or experiences that are highly relevant.
 Job URL for analysis:
 {{{jobUrl}}}
 {{/if}}
