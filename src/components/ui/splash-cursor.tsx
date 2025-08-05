@@ -364,8 +364,23 @@ function SplashCursor({
     const curlProgram = new P(baseVertexShader, curlShader);
     const vorticityProgram = new P(baseVertexShader, vorticityShader);
     const pressureProgram = new P(baseVertexShader, pressureShader);
-    const gradienSubtractProgram = new P(baseVertexShader, gradientSubtractShader);
+    const gradienSubtractProgram = new P(
+      baseVertexShader,
+      gradientSubtractShader
+    );
     const displayMaterial = new C(baseVertexShader, displayShaderSource);
+    const sunraysMaskShader = compileShader(gl.FRAGMENT_SHADER, "precision highp float; precision highp sampler2D; varying vec2 vUv; uniform sampler2D uTexture; void main () {     vec4 c = texture2D(uTexture, vUv);     float len = length(c.rgb);     gl_FragColor = vec4(len, len, len, 1.0); }");
+    const sunraysShader = compileShader(gl.FRAGMENT_SHADER, "precision highp float; precision highp sampler2D; varying vec2 vUv; uniform sampler2D uTexture; uniform float weight; void main () {     float len = texture2D(uTexture, vUv).r;     float r = (len + 0.2) * weight;     gl_FragColor = vec4(r, r, r, 1.0); }");
+    const bloomPrefilterShader = compileShader(gl.FRAGMENT_SHADER, "precision mediump float; precision mediump sampler2D; varying vec2 vUv; uniform sampler2D uTexture; uniform vec3 curve; uniform float threshold; void main () {     vec3 c = texture2D(uTexture, vUv).rgb;     float br = max(c.r, max(c.g, c.b));     float rq = clamp(br - curve.x, 0.0, curve.y);     rq = curve.z * rq * rq;     c *= max(rq, br - threshold) / max(br, 0.0001);     gl_FragColor = vec4(c, 0.0); }");
+    const bloomBlurShader = compileShader(gl.FRAGMENT_SHADER, "precision mediump float; precision mediump sampler2D; varying vec2 vUv; varying vec2 vL; varying vec2 vR; varying vec2 vT; varying vec2 vB; uniform sampler2D uTexture; void main () {     vec4 sum = vec4(0.0);     sum += texture2D(uTexture, vUv) * 0.29411765;     sum += texture2D(uTexture, vL) * 0.35294118;     sum += texture2D(uTexture, vR) * 0.35294118;     gl_FragColor = sum; }");
+    const bloomFinalShader = compileShader(gl.FRAGMENT_SHADER, "precision mediump float; precision mediump sampler2D; varying vec2 vUv; uniform sampler2D uTexture; uniform float intensity; void main () {     gl_FragColor = vec4(texture2D(uTexture, vUv).rgb * intensity, 1.0); }");
+    const sunraysMaskProgram = new P(baseVertexShader, sunraysMaskShader);
+    const sunraysProgram = new P(baseVertexShader, sunraysShader);
+    const bloomPrefilterProgram = new P(baseVertexShader, bloomPrefilterShader);
+    const bloomBlurProgram = new P(baseVertexShader, bloomBlurShader);
+    const bloomFinalProgram = new P(baseVertexShader, bloomFinalShader);
+    const blurProgram = new P(blurVertexShader, blurShader);
+
     function initFramebuffers() {
       let simRes = getResolution(config.SIM_RESOLUTION);
       let dyeRes = getResolution(config.DYE_RESOLUTION);
@@ -869,6 +884,85 @@ function SplashCursor({
         gl.uniform1i(displayMaterial.uniforms.uSunrays, sunrays.attach(3));
       blit(target);
     }
+    function applyBloom(source, destination) {
+        if (bloomFramebuffers.length < 2) return;
+        let last = destination;
+        gl.disable(gl.BLEND);
+        bloomPrefilterProgram.bind();
+        let knee = config.BLOOM_THRESHOLD * config.BLOOM_SOFT_KNEE + 0.0001;
+        let curve0 = config.BLOOM_THRESHOLD - knee;
+        let curve1 = knee * 2;
+        let curve2 = 0.25 / knee;
+        gl.uniform3f(bloomPrefilterProgram.uniforms.curve, curve0, curve1, curve2);
+        gl.uniform1f(
+            bloomPrefilterProgram.uniforms.threshold,
+            config.BLOOM_THRESHOLD
+        );
+        gl.uniform1i(bloomPrefilterProgram.uniforms.uTexture, source.attach(0));
+        gl.viewport(0, 0, last.width, last.height);
+        blit(last);
+        bloomBlurProgram.bind();
+        for (let i = 0; i < bloomFramebuffers.length; i++) {
+            let dest = bloomFramebuffers[i];
+            gl.uniform2f(
+                bloomBlurProgram.uniforms.texelSize,
+                last.texelSizeX,
+                last.texelSizeY
+            );
+            gl.uniform1i(bloomBlurProgram.uniforms.uTexture, last.attach(0));
+            gl.viewport(0, 0, dest.width, dest.height);
+            blit(dest);
+            last = dest;
+        }
+        gl.blendFunc(gl.ONE, gl.ONE);
+        gl.enable(gl.BLEND);
+        for (let i = bloomFramebuffers.length - 2; i >= 0; i--) {
+            let baseTex = bloomFramebuffers[i];
+            gl.uniform2f(
+                bloomBlurProgram.uniforms.texelSize,
+                last.texelSizeX,
+                last.texelSizeY
+            );
+            gl.uniform1i(bloomBlurProgram.uniforms.uTexture, last.attach(0));
+            gl.viewport(0, 0, baseTex.width, baseTex.height);
+            blit(baseTex);
+            last = baseTex;
+        }
+        gl.disable(gl.BLEND);
+        bloomFinalProgram.bind();
+        gl.uniform2f(
+            bloomFinalProgram.uniforms.texelSize,
+            last.texelSizeX,
+            last.texelSizeY
+        );
+        gl.uniform1i(bloomFinalProgram.uniforms.uTexture, last.attach(0));
+        gl.uniform1f(bloomFinalProgram.uniforms.intensity, config.BLOOM_INTENSITY);
+        gl.viewport(0, 0, destination.width, destination.height);
+        blit(destination);
+    }
+    function applySunrays(source, mask, destination) {
+        gl.disable(gl.BLEND);
+        sunraysMaskProgram.bind();
+        gl.uniform1i(sunraysMaskProgram.uniforms.uTexture, source.attach(0));
+        gl.viewport(0, 0, mask.width, mask.height);
+        blit(mask);
+        sunraysProgram.bind();
+        gl.uniform1f(sunraysProgram.uniforms.weight, config.SUNRAYS_WEIGHT);
+        gl.uniform1i(sunraysProgram.uniforms.uTexture, mask.attach(0));
+        gl.viewport(0, 0, destination.width, destination.height);
+        blit(destination);
+    }
+    function blur(target, temp, iterations) {
+        blurProgram.bind();
+        for (let i = 0; i < iterations; i++) {
+            gl.uniform2f(blurProgram.uniforms.texelSize, target.texelSizeX, 0.0);
+            gl.uniform1i(blurProgram.uniforms.uTexture, target.attach(0));
+            blit(temp);
+            gl.uniform2f(blurProgram.uniforms.texelSize, 0.0, target.texelSizeY);
+            gl.uniform1i(blurProgram.uniforms.uTexture, temp.attach(0));
+            blit(target);
+        }
+    }
     function splatPointer(pointer) {
       let dx = pointer.deltaX * config.SPLAT_FORCE;
       let dy = pointer.deltaY * config.SPLAT_FORCE;
@@ -1115,6 +1209,7 @@ function SplashCursor({
         width: "100vw",
         height: "100vh",
         zIndex: -1,
+        pointerEvents: "none",
       }}
     >
       <canvas ref={canvasRef} style={{ width: "100%", height: "100%" }} />
