@@ -5,6 +5,7 @@ import { analyzeResume } from '@/ai/flows/resume-analysis';
 export async function handleAnalyzeResume(formData: FormData) {
   const file = formData.get('resume') as File;
   const jobDescription = formData.get('jobDescription') as string;
+  const jobUrl = formData.get('jobUrl') as string;
 
   if (!file) {
     throw new Error('No resume file provided');
@@ -16,5 +17,6 @@ export async function handleAnalyzeResume(formData: FormData) {
   return await analyzeResume({ 
     resumeDataUri: dataUri,
     jobDescription: jobDescription || undefined,
+    jobUrl: jobUrl || undefined,
   });
 }

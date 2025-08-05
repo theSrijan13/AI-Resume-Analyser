@@ -14,6 +14,7 @@ import {
   Target,
   FileUp,
   RotateCcw,
+  Link,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -37,7 +38,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
-import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, PolarGrid, PolarAngleAxis, RadarChart, Radar } from 'recharts';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis } from 'recharts';
 import { handleAnalyzeResume } from './actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -47,6 +48,7 @@ const formSchema = z.object({
     .refine((file) => file.size > 0, 'Please upload a resume.')
     .refine((file) => file.size < 5 * 1024 * 1024, 'File size must be less than 5MB.'),
   jobDescription: z.string().optional(),
+  jobUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
 });
 
 const chartConfig = {
@@ -66,6 +68,7 @@ export default function ResumeAnalyzerPage() {
     defaultValues: {
         resume: undefined,
         jobDescription: '',
+        jobUrl: '',
     }
   });
 
@@ -82,6 +85,9 @@ export default function ResumeAnalyzerPage() {
     formData.append('resume', values.resume);
     if (values.jobDescription) {
         formData.append('jobDescription', values.jobDescription);
+    }
+    if(values.jobUrl) {
+        formData.append('jobUrl', values.jobUrl);
     }
 
     try {
@@ -104,7 +110,7 @@ export default function ResumeAnalyzerPage() {
     }
   }
 
-  const skillsChartData = result?.extractedData.skills.map(skill => ({
+  const skillsChartData = result?.extractedData.skills.slice(0, 7).map(skill => ({
     subject: skill,
     score: Math.floor(Math.random() * (95 - 70 + 1)) + 70, // Placeholder score
   })) || [];
@@ -123,7 +129,7 @@ export default function ResumeAnalyzerPage() {
             <CardHeader>
               <CardTitle>Analyze Your Resume</CardTitle>
               <CardDescription>
-                Get instant, AI-powered feedback. For best results, add a job description.
+                Get instant, AI-powered feedback. Add a job description or URL for tailored analysis.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -139,19 +145,20 @@ export default function ResumeAnalyzerPage() {
                       <FormItem>
                         <FormLabel>Resume File</FormLabel>
                         <FormControl>
-                          <div className="relative">
-                            <FileUp className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                            <Input
-                              type="file"
-                              className="pl-10 file:text-sm file:font-medium file:text-accent-foreground file:bg-accent file:rounded-md file:px-3 file:py-1 file:border-0 file:mr-4 hover:file:bg-accent/90"
-                              accept=".pdf,.doc,.docx,.txt"
-                              onChange={(e) => {
-                                if (e.target.files) {
-                                  onChange(e.target.files[0]);
-                                }
-                              }}
-                            />
-                          </div>
+                            <label className="relative flex items-center justify-center h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background cursor-pointer hover:bg-accent hover:text-accent-foreground">
+                                <FileUp className="h-5 w-5 text-muted-foreground mr-2" />
+                                <span className="text-muted-foreground">{form.getValues('resume')?.name || 'Choose a file'}</span>
+                                <Input
+                                    type="file"
+                                    className="sr-only"
+                                    accept=".pdf,.doc,.docx,.txt"
+                                    onChange={(e) => {
+                                        if (e.target.files) {
+                                        onChange(e.target.files[0]);
+                                        }
+                                    }}
+                                />
+                           </label>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -166,7 +173,7 @@ export default function ResumeAnalyzerPage() {
                         <FormLabel>Job Description (Optional)</FormLabel>
                         <FormControl>
                             <Textarea 
-                                placeholder="Paste the job description here to get a tailored analysis and match score."
+                                placeholder="Paste the job description here..."
                                 className="min-h-[150px]"
                                 {...field}
                             />
@@ -175,8 +182,36 @@ export default function ResumeAnalyzerPage() {
                       </FormItem>
                     )}
                   />
+                  
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-card px-2 text-muted-foreground">
+                        Or
+                      </span>
+                    </div>
+                  </div>
 
-                  <div className="flex gap-2">
+                  <FormField
+                    control={form.control}
+                    name="jobUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Job Post URL (Optional)</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Link className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                            <Input placeholder="https://example.com/job/posting" className="pl-10" {...field} />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="flex gap-2 pt-4">
                     <Button type="button" variant="outline" onClick={handleReset} className="w-full" disabled={isLoading}>
                       <RotateCcw className="mr-2" /> Clear
                     </Button>
@@ -250,26 +285,7 @@ export default function ResumeAnalyzerPage() {
                         </Card>
                     )}
 
-                    <Card className="underglow">
-                        <CardHeader>
-                            <CardTitle>Extracted Information</CardTitle>
-                            <CardDescription>The key details our AI extracted from your document.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <InfoItem label="Name" value={result.extractedData.name} />
-                            <InfoItem label="Email" value={result.extractedData.email} />
-                            <InfoItem label="Phone" value={result.extractedData.phone} />
-                             <InfoList label="Skills" items={result.extractedData.skills} />
-                             <Alert>
-                                <AlertTitle>Summary</AlertTitle>
-                                <AlertDescription>{result.extractedData.summary || 'No summary found.'}</AlertDescription>
-                             </Alert>
-                             <AnalysisSection title="Experience" items={result.extractedData.experience} icon={<FileText />} />
-                             <AnalysisSection title="Education" items={result.extractedData.education} icon={<FileText />} />
-                        </CardContent>
-                    </Card>
-
-                    <Card className="underglow">
+                     <Card className="underglow">
                         <CardHeader>
                              <CardTitle>General AI Analysis</CardTitle>
                              <CardDescription>General feedback on your resume, independent of a specific job.</CardDescription>
@@ -287,7 +303,7 @@ export default function ResumeAnalyzerPage() {
                         <Card className="underglow">
                             <CardHeader>
                                 <CardTitle>Skills Visualization</CardTitle>
-                                <CardDescription>A visual representation of your key skills.</CardDescription>
+                                <CardDescription>A visual representation of your key skills (top 7 shown).</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <ChartContainer config={chartConfig} className="h-[350px] w-full">
@@ -301,6 +317,32 @@ export default function ResumeAnalyzerPage() {
                             </CardContent>
                         </Card>
                     )}
+
+                    <Card className="underglow">
+                        <CardHeader>
+                            <CardTitle>Extracted Information</CardTitle>
+                            <CardDescription>The key details our AI extracted from your document.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <InfoItem label="Name" value={result.extractedData.name} />
+                                <InfoItem label="Email" value={result.extractedData.email} />
+                                <InfoItem label="Phone" value={result.extractedData.phone} />
+                            </div>
+                             <Separator/>
+                             <InfoList label="Skills" items={result.extractedData.skills} />
+                             <Separator/>
+                             <Alert>
+                                <AlertTitle>Summary</AlertTitle>
+                                <AlertDescription>{result.extractedData.summary || 'No summary found.'}</AlertDescription>
+                             </Alert>
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <AnalysisSection title="Experience" items={result.extractedData.experience} icon={<FileText />} />
+                                <AnalysisSection title="Education" items={result.extractedData.education} icon={<FileText />} />
+                            </div>
+                        </CardContent>
+                    </Card>
+
                 </div>
             )}
         </div>
@@ -310,7 +352,7 @@ export default function ResumeAnalyzerPage() {
 }
 
 const InfoItem = ({ label, value }: { label: string; value: string }) => (
-  <div>
+  <div className="space-y-1">
     <h3 className="text-sm font-semibold text-muted-foreground">{label}</h3>
     <p className="text-base">{value || 'Not found'}</p>
   </div>
@@ -318,7 +360,7 @@ const InfoItem = ({ label, value }: { label: string; value: string }) => (
 
 const InfoList = ({ label, items, icon }: { label:string; items: string[]; icon?: React.ReactNode }) => (
     <div>
-        <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2 mb-2">{icon} {label}</h3>
+        <h3 className="text-base font-semibold text-foreground flex items-center gap-2 mb-2">{icon} {label}</h3>
         {items && items.length > 0 ? (
             <div className="flex flex-wrap gap-2 mt-1">
                 {items.map((item, index) => (
@@ -338,6 +380,7 @@ const AnalysisSection = ({ icon, title, items }: { icon: React.ReactNode, title:
         {items.map((item, index) => (
           <li key={index}>{item}</li>
         ))}
+        {items.length === 0 && <p>None found.</p>}
       </ul>
     </div>
   );

@@ -18,6 +18,7 @@ const AnalyzeResumeInputSchema = z.object({
       "A resume file, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
     ),
   jobDescription: z.string().optional().describe('The job description to compare the resume against.'),
+  jobUrl: z.string().optional().describe('A URL to the job posting.'),
 });
 export type AnalyzeResumeInput = z.infer<typeof AnalyzeResumeInputSchema>;
 
@@ -42,7 +43,7 @@ const GeneralAnalysisSchema = z.object({
 });
 
 const JobMatchAnalysisSchema = z.object({
-    isApplicable: z.boolean().describe('Whether a job description was provided for analysis.'),
+    isApplicable: z.boolean().describe('Whether a job description or URL was provided for analysis.'),
     matchScore: z.number().min(0).max(100).describe('A score from 0 to 100 indicating how well the resume matches the job description.'),
     matchingKeywords: z.array(z.string()).describe('Keywords from the job description found in the resume.'),
     missingKeywords: z.array(z.string()).describe('Important keywords from the job description missing from the resume.'),
@@ -85,6 +86,15 @@ Third, because a job description has been provided, perform a job match analysis
 - **Alignment Summary**: Explain how well the candidate's experience and skills align with the role's requirements and responsibilities.
 Job Description for analysis:
 {{{jobDescription}}}
+{{else}}
+{{#if jobUrl}}
+Third, because a job URL has been provided, perform a job match analysis. You will act as if you can access the content of this URL.
+- **Job Match Score**: Score the resume's match to the job description from 0-100.
+- **Keyword Analysis**: Identify matching and missing keywords between the resume and the job description.
+- **Alignment Summary**: Explain how well the candidate's experience and skills align with the role's requirements and responsibilities.
+Job URL for analysis:
+{{{jobUrl}}}
+{{/if}}
 {{/if}}
 
 Finally, provide an overall score for the resume from 0 to 100 based on its general clarity, impact, and completeness.
