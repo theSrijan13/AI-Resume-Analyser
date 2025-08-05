@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { MoveRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { SplashCursor } from '@/components/ui/splash-cursor';
 
 export default function LandingPage() {
   const [titleNumber, setTitleNumber] = useState(0);
@@ -19,25 +21,33 @@ export default function LandingPage() {
   }, [titleNumber, titles]);
 
   return (
-    <div className="w-full bg-background">
-      <div className="container mx-auto">
+    <div className="w-full bg-background relative">
+      <SplashCursor />
+      <div className="container mx-auto relative z-10">
         <header className="flex justify-between items-center py-4">
-          <h1 className="text-2xl font-bold text-primary">TalentFlow AI</h1>
+          <h1 className="text-2xl font-bold text-gradient bg-gradient-to-r from-primary to-accent">
+            TalentFlow AI
+          </h1>
         </header>
         <div className="flex gap-8 py-20 lg:py-40 items-center justify-center flex-col text-center">
           <div className="flex gap-4 flex-col">
             <h1 className="text-5xl md:text-7xl max-w-3xl tracking-tighter font-bold">
               The Future of{' '}
-              <span className="relative inline-block h-[1.2em]">
+              <span className="relative inline-block h-[1.2em] overflow-hidden">
                 {titles.map((title, index) => (
-                  <span
+                  <motion.span
                     key={index}
-                    className={`absolute inset-0 transition-opacity duration-500 ${
-                      titleNumber === index ? 'opacity-100' : 'opacity-0'
-                    }`}
+                    className="absolute inset-0"
+                    initial={{ y: '100%' }}
+                    animate={
+                      titleNumber === index
+                        ? { y: 0, opacity: 1 }
+                        : { y: '-100%', opacity: 0 }
+                    }
+                    transition={{ type: 'spring', stiffness: 100, damping: 20 }}
                   >
                     {title}
-                  </span>
+                  </motion.span>
                 ))}
               </span>
               , <br />
