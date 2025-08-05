@@ -6,7 +6,6 @@ import { z } from 'zod';
 import {
   FileText,
   Loader2,
-  Upload,
   Sparkles,
   CheckCircle,
   XCircle,
@@ -15,6 +14,10 @@ import {
   FileUp,
   RotateCcw,
   Link,
+  Briefcase,
+  GraduationCap,
+  ListChecks,
+  Book,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -38,7 +41,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis } from 'recharts';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, BarChart, Bar, XAxis, YAxis } from 'recharts';
 import { handleAnalyzeResume } from './actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -56,6 +59,10 @@ const chartConfig = {
       label: "Score",
       color: "hsl(var(--primary))",
     },
+    count: {
+        label: 'Count',
+        color: 'hsl(var(--chart-1))',
+    }
 };
 
 export default function ResumeAnalyzerPage() {
@@ -114,6 +121,13 @@ export default function ResumeAnalyzerPage() {
     subject: skill,
     score: Math.floor(Math.random() * (95 - 70 + 1)) + 70, // Placeholder score
   })) || [];
+
+  const skillCategoryData = [
+    { category: 'Languages', count: result?.extractedData.skills.filter(s => ['javascript', 'python', 'java', 'c++'].includes(s.toLowerCase())).length || 0 },
+    { category: 'Frameworks', count: result?.extractedData.skills.filter(s => ['react', 'next.js', 'vue', 'angular', 'django'].includes(s.toLowerCase())).length || 0 },
+    { category: 'Databases', count: result?.extractedData.skills.filter(s => ['sql', 'mongodb', 'postgresql'].includes(s.toLowerCase())).length || 0 },
+    { category: 'Tools', count: result?.extractedData.skills.filter(s => ['git', 'docker', 'kubernetes'].includes(s.toLowerCase())).length || 0 }
+  ].filter(d => d.count > 0);
 
 
   return (
@@ -299,50 +313,75 @@ export default function ResumeAnalyzerPage() {
                         </CardContent>
                     </Card>
 
-                    {skillsChartData.length > 0 && (
-                        <Card className="underglow">
-                            <CardHeader>
-                                <CardTitle>Skills Visualization</CardTitle>
-                                <CardDescription>A visual representation of your key skills (top 7 shown).</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <ChartContainer config={chartConfig} className="h-[350px] w-full">
-                                    <RadarChart data={skillsChartData}>
-                                        <PolarGrid />
-                                        <PolarAngleAxis dataKey="subject" />
-                                        <ChartTooltip content={<ChartTooltipContent />} />
-                                        <Radar name="Skill Score" dataKey="score" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.6} />
-                                    </RadarChart>
-                                </ChartContainer>
-                            </CardContent>
-                        </Card>
-                    )}
-
                     <Card className="underglow">
                         <CardHeader>
                             <CardTitle>Extracted Information</CardTitle>
                             <CardDescription>The key details our AI extracted from your document.</CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-4">
+                        <CardContent className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <InfoItem label="Name" value={result.extractedData.name} />
                                 <InfoItem label="Email" value={result.extractedData.email} />
                                 <InfoItem label="Phone" value={result.extractedData.phone} />
                             </div>
-                             <Separator/>
-                             <InfoList label="Skills" items={result.extractedData.skills} />
-                             <Separator/>
-                             <Alert>
+                            <Separator/>
+                            <Alert>
                                 <AlertTitle>Summary</AlertTitle>
                                 <AlertDescription>{result.extractedData.summary || 'No summary found.'}</AlertDescription>
-                             </Alert>
-                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <AnalysisSection title="Experience" items={result.extractedData.experience} icon={<FileText />} />
-                                <AnalysisSection title="Education" items={result.extractedData.education} icon={<FileText />} />
+                            </Alert>
+                             
+                            <AnalysisSection title="Experience" items={result.extractedData.experience} icon={<Briefcase />} />
+                            <Separator />
+                            <AnalysisSection title="Education" items={result.extractedData.education} icon={<GraduationCap />} />
+                             <Separator />
+                            <AnalysisSection title="Projects" items={result.extractedData.projects} icon={<Book />} />
+                            <Separator />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <InfoList label="Skills" items={result.extractedData.skills} icon={<Sparkles />} />
+                                <InfoList label="Certifications" items={result.extractedData.certifications} icon={<ListChecks />} />
                             </div>
+                            <Separator />
+                            <InfoList label="Links" items={result.extractedData.links} icon={<Link />} />
                         </CardContent>
                     </Card>
 
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {skillsChartData.length > 0 && (
+                            <Card className="underglow">
+                                <CardHeader>
+                                    <CardTitle>Skills Radar</CardTitle>
+                                    <CardDescription>A visual representation of your key skills (top 7 shown).</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <ChartContainer config={chartConfig} className="h-[300px] w-full">
+                                        <RadarChart data={skillsChartData} cy="45%">
+                                            <PolarGrid />
+                                            <PolarAngleAxis dataKey="subject" />
+                                            <ChartTooltip content={<ChartTooltipContent />} />
+                                            <Radar name="Skill Score" dataKey="score" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.6} />
+                                        </RadarChart>
+                                    </ChartContainer>
+                                </CardContent>
+                            </Card>
+                        )}
+                        {skillCategoryData.length > 0 && (
+                            <Card className="underglow">
+                                <CardHeader>
+                                    <CardTitle>Skill Categories</CardTitle>
+                                    <CardDescription>Breakdown of your skills by category.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <ChartContainer config={chartConfig} className="h-[300px] w-full">
+                                        <BarChart data={skillCategoryData} accessibilityLayer>
+                                            <XAxis dataKey="category" tickLine={false} axisLine={false} tickMargin={8} fontSize={12} />
+                                            <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+                                            <Bar dataKey="count" fill="var(--color-count)" radius={8} />
+                                        </BarChart>
+                                    </ChartContainer>
+                                </CardContent>
+                            </Card>
+                        )}
+                    </div>
                 </div>
             )}
         </div>
@@ -364,7 +403,9 @@ const InfoList = ({ label, items, icon }: { label:string; items: string[]; icon?
         {items && items.length > 0 ? (
             <div className="flex flex-wrap gap-2 mt-1">
                 {items.map((item, index) => (
-                    <Badge key={index} variant="secondary">{item}</Badge>
+                    <a href={item.startsWith('http') ? item : undefined} target="_blank" rel="noopener noreferrer" key={index}>
+                        <Badge variant="secondary" className={item.startsWith('http') ? 'hover:bg-primary/20 cursor-pointer' : ''}>{item}</Badge>
+                    </a>
                 ))}
             </div>
         ) : (
@@ -376,11 +417,14 @@ const InfoList = ({ label, items, icon }: { label:string; items: string[]; icon?
 const AnalysisSection = ({ icon, title, items }: { icon: React.ReactNode, title: string, items: string[] }) => (
     <div>
       <h3 className="text-lg font-semibold flex items-center gap-2 mb-2">{icon} {title}</h3>
-      <ul className="list-disc list-inside space-y-1 text-muted-foreground text-sm">
-        {items.map((item, index) => (
-          <li key={index}>{item}</li>
-        ))}
-        {items.length === 0 && <p>None found.</p>}
+      <ul className="list-disc list-inside space-y-2 text-muted-foreground text-sm">
+        {items && items.length > 0 ? (
+            items.map((item, index) => (
+              <li key={index}>{item}</li>
+            ))
+        ) : (
+            <li>None found.</li>
+        )}
       </ul>
     </div>
   );

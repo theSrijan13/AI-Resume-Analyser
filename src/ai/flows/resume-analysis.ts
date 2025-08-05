@@ -27,9 +27,12 @@ const ResumeSectionSchema = z.object({
   email: z.string().describe('The email address of the candidate.'),
   phone: z.string().describe('The phone number of the candidate.'),
   summary: z.string().describe('The professional summary or objective.'),
-  experience: z.array(z.string()).describe('The work experience of the candidate.'),
-  education: z.array(z.string()).describe('The education history of the candidate.'),
+  experience: z.array(z.string()).describe('The work experience of the candidate, including company, role, and dates.'),
+  education: z.array(z.string()).describe('The education history of the candidate, including institution, degree, and dates.'),
   skills: z.array(z.string()).describe('The skills of the candidate.'),
+  projects: z.array(z.string()).describe('A list of projects mentioned in the resume.'),
+  certifications: z.array(z.string()).describe('A list of certifications mentioned in the resume.'),
+  links: z.array(z.string()).describe('A list of URLs or links to portfolios, GitHub, LinkedIn, etc.'),
 });
 
 const GeneralAnalysisSchema = z.object({
@@ -71,7 +74,7 @@ const prompt = ai.definePrompt({
   model: 'googleai/gemini-1.5-flash',
   prompt: `You are an expert career coach and resume analyst. Your task is to conduct a complete, comprehensive, and exhaustive analysis of the provided resume.
 
-First, extract all key information from the resume. Be as thorough as possible.
+First, extract all key information from the resume. Be as thorough as possible. Extract full details for experience, education, and projects.
 
 Second, perform a detailed general analysis covering the following:
 - **Strengths**: What makes this resume strong? (e.g., clear impact metrics, strong action verbs).
