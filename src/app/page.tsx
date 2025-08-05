@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { SplashCursor } from '@/components/ui/splash-cursor';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function LandingPage() {
   const [titleNumber, setTitleNumber] = useState(0);
@@ -75,9 +76,10 @@ export default function LandingPage() {
       <SplashCursor />
       <div className="container mx-auto relative z-10 px-4">
         <header className="flex justify-between items-center py-4">
-          <h1 className="text-2xl font-bold text-gradient bg-gradient-to-r from-primary to-accent">
+          <h1 className="text-2xl font-bold text-gradient bg-gradient-to-r from-blue-600 to-gray-900 dark:from-blue-400 dark:to-white">
             TalentFlow AI
           </h1>
+          <ThemeToggle />
         </header>
         <div className="flex gap-8 py-20 lg:py-40 items-center justify-center flex-col text-center">
           <div className="flex gap-4 flex-col">
@@ -161,5 +163,3 @@ export default function LandingPage() {
     </div>
   );
 }
-
-    

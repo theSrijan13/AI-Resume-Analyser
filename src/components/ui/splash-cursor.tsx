@@ -1217,5 +1217,3 @@ function SplashCursor({
   );
 }
 export { SplashCursor };
-
-    
